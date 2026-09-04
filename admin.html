@@ -138,6 +138,7 @@ textarea{resize:vertical;min-height:80px;}
       <a href="#" class="nav-link active" data-page="dashboard"><span class="ico">📊</span> 대시보드</a>
       <a href="#" class="nav-link" data-page="consultations"><span class="ico">💬</span> AI 상담 관리</a>
       <a href="#" class="nav-link" data-page="risk"><span class="ico">⚠️</span> 위험 검토함 <span id="risk-badge" style="background:#C0392B;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:auto;display:none">0</span></a>
+      <a href="#" class="nav-link" data-page="held"><span class="ico">🔴</span> RED 차단 검토 <span id="held-badge" style="background:#8E24AA;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:auto;display:none">0</span></a>
       <a href="#" class="nav-link" data-page="reviewed"><span class="ico">✅</span> 검수 답변</a>
       <a href="#" class="nav-link" data-page="products"><span class="ico">🧪</span> 제품 DB</a>
       <a href="#" class="nav-link" data-page="nutrition"><span class="ico">📋</span> 영양 기준값</a>
@@ -310,7 +311,7 @@ async function apiDelete(path, body) {
 
 // ── 라우팅 ───────────────────────────────────────────────────────
 const PAGE_TITLES = {
-  dashboard:'대시보드', consultations:'AI 상담 관리', risk:'위험 검토함',
+  dashboard:'대시보드', consultations:'AI 상담 관리', risk:'위험 검토함', held:'RED 차단 검토',
   reviewed:'검수 답변 관리', products:'제품 DB 관리', nutrition:'영양 기준값 관리',
   users:'회원 관리', settings:'운영 설정',
 };
@@ -327,6 +328,7 @@ function navigate(page) {
     case 'dashboard':     renderDashboard(); break;
     case 'consultations': renderConsultations(); break;
     case 'risk':          renderRisk(); break;
+    case 'held':          renderHeld(); break;
     case 'reviewed':      renderReviewed(); break;
     case 'products':      renderProducts(); break;
     case 'nutrition':     renderNutrition(); break;
@@ -346,6 +348,16 @@ async function updateRiskBadge() {
   const badge = document.getElementById('risk-badge');
   badge.style.display = count > 0 ? 'inline' : 'none';
   badge.textContent = count;
+  updateHeldBadge();
+}
+
+async function updateHeldBadge() {
+  const data = await apiGet('/api/admin/risk/held', { status: 'pending', limit: 1 });
+  const n = data.total || 0;
+  const b = document.getElementById('held-badge');
+  if (!b) return;
+  b.style.display = n > 0 ? 'inline' : 'none';
+  b.textContent = n;
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────────
@@ -603,6 +615,7 @@ async function loadRisk(page) {
   if (!wrap) return;
 
   if (!data.items?.length) { wrap.innerHTML = '<div class="empty">검토 대기 항목 없음</div>'; return; }
+  riskItems.clear(); data.items.forEach(it => riskItems.set(it.id, it));
 
   wrap.innerHTML = `<div class="tbl-wrap"><table>
     <thead><tr><th>질문</th><th>위험도</th><th>플래그</th><th>답변 미리보기</th><th>연령</th><th>시각</th><th></th></tr></thead>
@@ -613,14 +626,16 @@ async function loadRisk(page) {
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666">${esc(r.answer||'')}</td>
       <td>${esc(r.child_age_label||'-')}</td>
       <td style="white-space:nowrap">${fmtDate(r.created_at)}</td>
-      <td><button class="btn btn-p btn-sm" onclick="openRiskResolve('${r.id}','${esc(r.question)}')">검토</button></td>
+      <td><button class="btn btn-p btn-sm" data-id="${esc(r.id)}" onclick="openRiskResolve(this.dataset.id)">검토</button></td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 
   renderPager('risk-pager', page, data.total, 20, loadRisk);
 }
 
-function openRiskResolve(id, question) {
+const riskItems = new Map();
+function openRiskResolve(id) {
+  const question = riskItems.get(id)?.question || '';
   showModal(`
     <h3>위험 상담 검토</h3>
     <div class="form-group" style="margin-bottom:10px">
@@ -649,7 +664,7 @@ function openRiskResolve(id, question) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-s" onclick="closeModal()">취소</button>
-      <button class="btn btn-p" onclick="submitRiskResolve('${id}')">완료 처리</button>
+      <button class="btn btn-p" onclick="submitRiskResolve('${esc(id)}')">완료 처리</button>
     </div>
   `);
 }
@@ -671,6 +686,132 @@ async function submitRiskResolve(chatId) {
   closeModal();
   loadRisk(riskPage);
   updateRiskBadge();
+}
+
+
+// ── RED 차단 검토 (held_for_review) ──────────────────────────────
+let heldPage = 1;
+const heldItems = new Map();
+
+function heldStatusTag(st) {
+  const m = { pending:['대기','#8E24AA'], approved:['승인','#2E7D32'], edited:['수정승인','#1565C0'], rejected:['거절','#C0392B'] };
+  const [label, color] = m[st] || [st||'-', '#888'];
+  return `<span style="background:${color};color:#fff;border-radius:4px;padding:2px 7px;font-size:11px">${label}</span>`;
+}
+
+async function renderHeld() {
+  const today = new Date().toISOString().slice(0,10);
+  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+  setContent(`
+    <div class="card" style="border-left:4px solid #8E24AA">
+      <div style="font-size:13px;color:#555;margin-bottom:10px">
+        AI 답변이 <b>진단·처방·단정</b> 표현으로 판정돼 사용자에게 <b>노출되지 않은</b> 건입니다.
+        원본을 확인하고 <b>승인</b>(그대로 공개 가능) / <b>수정 후 승인</b> / <b>거절</b>을 선택하세요. 모든 처리는 감사 로그에 남습니다.
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>상태</label>
+          <select id="hq-status"><option value="pending">대기중</option><option value="approved">승인</option><option value="edited">수정승인</option><option value="rejected">거절</option><option value="all">전체</option></select>
+        </div>
+        <div class="form-group"><label>시작일</label><input type="date" id="hq-from" value="${weekAgo}"></div>
+        <div class="form-group"><label>종료일</label><input type="date" id="hq-to" value="${today}"></div>
+        <div class="form-group"><label>&nbsp;</label><button class="btn btn-p" onclick="loadHeld(1)">조회</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div id="held-table-wrap"><div class="empty">로딩 중...</div></div>
+      <div class="pager" id="held-pager"></div>
+    </div>
+  `);
+  loadHeld(1);
+}
+
+async function loadHeld(page) {
+  heldPage = page;
+  const status = document.getElementById('hq-status')?.value || 'pending';
+  const from   = document.getElementById('hq-from')?.value || '';
+  const to     = document.getElementById('hq-to')?.value || '';
+  const data   = await apiGet('/api/admin/risk/held', { page, status, from: status==='pending' ? '' : from, to: status==='pending' ? '' : to });
+  const wrap   = document.getElementById('held-table-wrap');
+  if (!wrap) return;
+  if (data.error) { wrap.innerHTML = `<div class="empty">오류: ${esc(data.error)}</div>`; return; }
+  if (!data.items?.length) { wrap.innerHTML = '<div class="empty">해당 조건의 RED 차단 건이 없습니다 🎉</div>'; return; }
+
+  heldItems.clear();
+  data.items.forEach(it => heldItems.set(it.id, it));
+
+  wrap.innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>질문</th><th>판정 사유</th><th>원본 답변 미리보기</th><th>연령</th><th>시각</th><th>상태</th><th></th></tr></thead>
+    <tbody>${data.items.map(r => `<tr>
+      <td style="max-width:200px">${esc(r.question)}</td>
+      <td style="font-size:12px;color:#8E24AA;max-width:140px">${esc(r.eval_reason||'-')}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666">${esc((r.answer||'').slice(0,120))}</td>
+      <td>${esc(r.child_age_label||'-')}</td>
+      <td style="white-space:nowrap">${fmtDate(r.created_at)}</td>
+      <td>${heldStatusTag(r.red_review_status)}</td>
+      <td><button class="btn btn-p btn-sm" data-held-id="${esc(r.id)}" onclick="openHeldReview(this.dataset.heldId)">${r.red_review_status==='pending' ? '검토' : '보기'}</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+
+  renderPager('held-pager', page, data.total, 20, loadHeld);
+}
+
+function openHeldReview(id) {
+  const it = heldItems.get(id);
+  if (!it) return;
+  const pending = it.red_review_status === 'pending';
+  showModal(`
+    <h3>🔴 RED 차단 검토</h3>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>사용자 질문 · ${esc(it.child_age_label||'연령 미설정')}</label>
+      <div class="detail-pre">${esc(it.question)}</div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>판정 사유</label>
+      <div style="color:#8E24AA;font-size:13px">${esc(it.eval_reason||'-')}</div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>AI 원본 답변 (사용자 미노출)</label>
+      <div class="detail-pre" style="max-height:220px;overflow:auto">${esc(it.answer||'')}</div>
+    </div>
+    ${pending ? `
+    <div class="form-group" style="margin-bottom:10px">
+      <label>수정 답변 (비우면 원본 그대로 승인)</label>
+      <textarea id="hr-answer" rows="6" placeholder="진단·처방·단정 표현을 가능성 표현으로 고쳐 주세요. 예) '빈혈입니다' → '빈혈 가능성이 있어 소아과 확인을 권해요'"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>메모 / 거절 사유</label>
+      <textarea id="hr-note" rows="2" placeholder="승인 메모 또는 거절 사유(거절 시 필수)"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-s" onclick="closeModal()">취소</button>
+      <button class="btn btn-s" style="color:#C0392B" onclick="submitHeldReject('${esc(id)}')">거절</button>
+      <button class="btn btn-p" onclick="submitHeldApprove('${esc(id)}')">승인</button>
+    </div>` : `
+    <div class="form-group" style="margin-bottom:10px">
+      <label>처리 결과 · ${heldStatusTag(it.red_review_status)} · ${fmtDate(it.red_approved_at)}</label>
+      <div class="detail-pre">${esc(it.red_approved_answer||'(거절됨)')}</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-s" onclick="closeModal()">닫기</button></div>`}
+  `);
+}
+
+async function submitHeldApprove(chatId) {
+  const approved = document.getElementById('hr-answer')?.value || '';
+  const note     = document.getElementById('hr-note')?.value || '';
+  const res = await apiPost('/api/admin/risk/approve', { chat_id: chatId, approved_answer: approved.trim() || undefined, note });
+  if (res.error) { showToast('오류: ' + res.error); return; }
+  showToast(res.status === 'edited' ? '수정 답변으로 승인했습니다' : '원본을 승인했습니다');
+  closeModal(); loadHeld(heldPage); updateRiskBadge();
+}
+
+async function submitHeldReject(chatId) {
+  const reason = document.getElementById('hr-note')?.value || '';
+  if (!reason.trim()) { showToast('거절 사유를 입력하세요.'); return; }
+  if (!confirm('이 답변을 거절 처리할까요? (사용자에게 공개되지 않습니다)')) return;
+  const res = await apiPost('/api/admin/risk/reject', { chat_id: chatId, reason });
+  if (res.error) { showToast('오류: ' + res.error); return; }
+  showToast('거절 처리했습니다');
+  closeModal(); loadHeld(heldPage); updateRiskBadge();
 }
 
 // ── REVIEWED ANSWERS ─────────────────────────────────────────────

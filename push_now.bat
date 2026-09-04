@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(chat): wire prompt-policy - emergency shortcut, GREEN/YELLOW/RED eval, RED hold queue"
+git commit -m "feat(admin): RED hold review queue (held/approve/reject) + vercel api subpath rewrite"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
