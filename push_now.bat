@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat: admin panel + new Supabase project (rccakcbjpaplrawvvliy), magic-link login"
+git commit -m "fix(admin): rename supabase client var to avoid shadowing CDN global"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
