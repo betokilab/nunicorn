@@ -162,7 +162,46 @@ export function createSupabaseAdmin() {
       let user;
       try { user = await res.json(); } catch { user = null; }
       return { data: { user }, error: null };
-    }
+    },
+
+    // GoTrue Admin API (service_role 전용) — supabase-js auth.admin 호환 최소 구현
+    admin: {
+      async _req(path, { method = 'GET', body } = {}) {
+        const res = await fetch(`${SUPA_URL}/auth/v1/admin${path}`, {
+          method,
+          headers: {
+            'apikey': SUPA_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPA_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        let json = null;
+        try { json = await res.json(); } catch {}
+        if (!res.ok) {
+          return { data: null, error: { status: res.status, message: json?.msg || json?.message || json?.error_description || `HTTP ${res.status}` } };
+        }
+        return { data: json, error: null };
+      },
+      async listUsers({ page = 1, perPage = 50 } = {}) {
+        const { data, error } = await this._req(`/users?page=${page}&per_page=${perPage}`);
+        if (error) return { data: { users: [] }, error };
+        // GoTrue는 { users: [...], aud } 형태로 반환
+        return { data: { users: data?.users ?? [], total: data?.total ?? null }, error: null };
+      },
+      async getUserById(id) {
+        const { data, error } = await this._req(`/users/${encodeURIComponent(id)}`);
+        return { data: { user: error ? null : data }, error };
+      },
+      async updateUserById(id, attrs) {
+        const { data, error } = await this._req(`/users/${encodeURIComponent(id)}`, { method: 'PUT', body: attrs });
+        return { data: { user: error ? null : data }, error };
+      },
+      async deleteUser(id) {
+        const { error } = await this._req(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        return { data: null, error };
+      },
+    },
   };
 
   return { from, auth };

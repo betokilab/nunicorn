@@ -46,3 +46,6 @@ agency/
 admin_migration.sql
 admin_migration_v2.sql
 admin_migration_v3.sql
+
+# 보관함
+_archive/

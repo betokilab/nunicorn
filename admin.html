@@ -313,10 +313,16 @@ async function doLogout() {
 async function apiGet(path, params = {}) {
   const url = new URL(path, location.origin);
   Object.entries(params).forEach(([k,v]) => v !== '' && v != null && url.searchParams.set(k, v));
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${adminToken}` }
-  });
-  return res.json();
+  try {
+    const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${adminToken}` } });
+    return await parseApi(res);
+  } catch (e) { return { error: '네트워크 오류: ' + e.message }; }
+}
+
+async function parseApi(res) {
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch { return { error: `서버 오류 (${res.status}) ${text.slice(0, 120)}` }; }
 }
 
 async function apiPost(path, body) {
@@ -324,8 +330,8 @@ async function apiPost(path, body) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
     body: JSON.stringify(body),
-  });
-  return res.json();
+  }).catch(e => ({ ok:false, status:0, text: async () => '네트워크 오류: ' + e.message }));
+  return parseApi(res);
 }
 
 async function apiPut(path, body) {
@@ -333,8 +339,8 @@ async function apiPut(path, body) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
     body: JSON.stringify(body),
-  });
-  return res.json();
+  }).catch(e => ({ ok:false, status:0, text: async () => '네트워크 오류: ' + e.message }));
+  return parseApi(res);
 }
 
 async function apiPatch(path, body) {
@@ -1379,6 +1385,7 @@ async function loadUsers(page) {
   const data = await apiGet('/api/admin/users', { page, keyword: kw });
   const wrap = document.getElementById('us-table-wrap');
   if (!wrap) return;
+  if (data.error) { wrap.innerHTML = `<div class="empty">오류: ${esc(data.error)}</div>`; return; }
   if (!data.items?.length) { wrap.innerHTML = '<div class="empty">결과 없음</div>'; return; }
 
   wrap.innerHTML = `<div class="tbl-wrap"><table>

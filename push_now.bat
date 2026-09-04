@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(admin): change password modal (auth.updateUser)"
+git commit -m "fix(admin): implement auth.admin (listUsers/getUserById/updateUserById) + robust api error handling"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
