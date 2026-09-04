@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix(admin): clear message on email rate limit"
+git commit -m "feat(admin): change password modal (auth.updateUser)"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

@@ -152,6 +152,7 @@ textarea{resize:vertical;min-height:80px;}
     <div id="topbar">
       <div class="tb-title" id="tb-title">대시보드</div>
       <div class="tb-user" id="tb-user"></div>
+      <div class="tb-logout" onclick="openPasswordModal()">🔑 비밀번호 변경</div>
       <div class="tb-logout" onclick="doLogout()">로그아웃</div>
     </div>
     <div id="content"><!-- 동적 렌더링 --></div>
@@ -258,6 +259,46 @@ async function doMagicLink() {
     errEl.textContent = '메일을 보냈어요. 받은편지함의 링크를 클릭하면 로그인됩니다.';
   } finally {
     btn.disabled = false; btn.textContent = '📧 이메일로 로그인 링크 받기';
+  }
+}
+
+function openPasswordModal() {
+  showModal(`
+    <h3>🔑 관리자 비밀번호 변경</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:12px">설정 후에는 이메일 + 비밀번호로 바로 로그인할 수 있어요. (이메일 링크 로그인도 계속 가능)</p>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>새 비밀번호 (8자 이상)</label>
+      <input type="password" id="pw-new" autocomplete="new-password" style="width:100%;padding:9px 10px;border:1px solid #DDD;border-radius:8px">
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>새 비밀번호 확인</label>
+      <input type="password" id="pw-new2" autocomplete="new-password" style="width:100%;padding:9px 10px;border:1px solid #DDD;border-radius:8px">
+    </div>
+    <div id="pw-err" style="color:#C0392B;font-size:13px;min-height:18px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-s" onclick="closeModal()">취소</button>
+      <button class="btn btn-p" id="pw-btn" onclick="submitPasswordChange()">변경</button>
+    </div>
+  `);
+  setTimeout(() => document.getElementById('pw-new')?.focus(), 50);
+}
+
+async function submitPasswordChange() {
+  const a = document.getElementById('pw-new').value;
+  const b = document.getElementById('pw-new2').value;
+  const err = document.getElementById('pw-err');
+  const btn = document.getElementById('pw-btn');
+  err.textContent = '';
+  if (a.length < 8) { err.textContent = '8자 이상 입력하세요.'; return; }
+  if (a !== b)      { err.textContent = '두 비밀번호가 다릅니다.'; return; }
+  btn.disabled = true; btn.textContent = '변경 중...';
+  try {
+    const { error } = await sbClient.auth.updateUser({ password: a });
+    if (error) { err.textContent = '변경 실패: ' + (error.message || '잠시 후 다시 시도하세요.'); return; }
+    closeModal();
+    showToast('비밀번호가 변경되었습니다. 다음부터 이메일 + 비밀번호로 로그인하세요.', 4000);
+  } finally {
+    btn.disabled = false; btn.textContent = '변경';
   }
 }
 
