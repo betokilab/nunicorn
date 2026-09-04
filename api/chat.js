@@ -171,7 +171,7 @@ export default async function handler(req) {
       console.error('[nunicorn] Anthropic API error', response.status, errCode);
 
       // 실패 로깅 (쿼터 차감 없음)
-      logChat({
+      await logChat({
         userId, userAgent, question: message.trim(), answer: null,
         status: 'failed', errorCode: errCode,
         riskLevel: questionRisk.level, riskFlags: questionRisk.flags,
@@ -190,7 +190,7 @@ export default async function handler(req) {
     if (!reply) {
       console.error('[nunicorn] Empty reply from API');
 
-      logChat({
+      await logChat({
         userId, userAgent, question: message.trim(), answer: null,
         status: 'empty_reply', errorCode: 'no_content',
         riskLevel: questionRisk.level, riskFlags: questionRisk.flags,
@@ -213,7 +213,7 @@ export default async function handler(req) {
     const finalRiskFlags = [...new Set([...questionRisk.flags, ...answerRisk.flags])];
 
     // 성공 로깅 (쿼터 차감됨)
-    logChat({
+    await logChat({
       userId, userAgent, question: message.trim(), answer: reply,
       status: 'success', errorCode: null,
       riskLevel: finalRiskLevel, riskFlags: finalRiskFlags,
@@ -231,7 +231,7 @@ export default async function handler(req) {
     if (chatErr.name === 'AbortError') {
       console.error('[nunicorn] API timeout');
 
-      logChat({
+      await logChat({
         userId, userAgent, question: message.trim(), answer: null,
         status: 'timeout', errorCode: 'timeout',
         riskLevel: questionRisk.level, riskFlags: questionRisk.flags,
@@ -246,7 +246,7 @@ export default async function handler(req) {
 
     console.error('[nunicorn] Chat error:', chatErr.name);
 
-    logChat({
+    await logChat({
       userId, userAgent, question: message.trim(), answer: null,
       status: 'failed', errorCode: chatErr.name,
       riskLevel: questionRisk.level, riskFlags: questionRisk.flags,

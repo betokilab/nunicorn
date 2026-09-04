@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix(admin): rename supabase client var to avoid shadowing CDN global"
+git commit -m "fix(chat): await logChat so edge runtime does not drop chat_logs insert"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

@@ -2,6 +2,16 @@
 
 관리자 페이지 주소: **https://www.nunicorn.co.kr/admin**
 
+> **2026-09-04 진행 상황**
+> - ✅ 1단계 Supabase 프로젝트 생성 (`nunicorn`, 서울, ref `rccakcbjpaplrawvvliy`)
+> - ✅ 2단계 `supabase_final.sql` 실행 (테이블 17개)
+> - ✅ 3단계 관리자 계정 `ayakmain@gmail.com` 초대 + admin 권한 부여
+> - ✅ 인증 URL 설정 (Site URL / Redirect `https://www.nunicorn.co.kr/**`)
+> - ✅ 5단계 코드 연결 + 배포 (publishable key 사용, 이메일 링크 로그인 추가)
+> - ✅ Vercel `SUPA_URL` 등록
+> - ⬜ **Vercel `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` 등록 → Redeploy** ← 남은 작업
+> - ⬜ (선택) Google 로그인 Provider 재등록
+
 아래 5단계를 순서대로 진행하면 됩니다. 소요 시간 약 15분.
 🔑 표시가 있는 값은 **절대 채팅이나 코드에 붙여넣지 마세요.** Supabase·Vercel 화면에서만 복사·붙여넣기 합니다.
 
