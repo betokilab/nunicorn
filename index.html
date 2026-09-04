@@ -547,7 +547,7 @@ button.ni { background:none; border:none; font-family:inherit; }
     <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleImg(event)">
     <div style="background:#F0F4FF;border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:10px;border:1px solid #D0D8F0;">
       <p style="font-size:11px;font-weight:700;color:#3B4A8C;">📤 이미지 외부 전송 안내</p>
-      <p style="font-size:11px;color:#5560A0;margin-top:3px;line-height:1.6;">사진을 찍으면 글자 인식(OCR)을 위해 <b>OCR.Space 서버</b>로 이미지가 전송됩니다. 이미지는 분석 후 저장되지 않으며, 뉴니콘 서버로는 전송되지 않습니다. 개인정보가 포함된 사진은 사용하지 마세요.</p>
+      <p style="font-size:11px;color:#5560A0;margin-top:3px;line-height:1.6;">사진은 성분 추출을 위해 <b>뉴니콘 서버를 거쳐 AI 처리 위탁사(Anthropic)</b>에 전송되며, 추출된 성분 수치만 남기고 <b>이미지는 저장하지 않습니다</b>. 얼굴·이름 등 개인정보가 보이는 사진은 사용하지 마세요.</p>
     </div>
     <div style="background:var(--yellow-light);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:14px;">
       <p style="font-size:12px;font-weight:700;color:#8B6200;">💡 어떻게 찍어요?</p>
@@ -772,12 +772,12 @@ button.ni { background:none; border:none; font-family:inherit; }
       <p style="font-weight:700;color:var(--text);margin:12px 0 4px;">이용 목적</p>
       <p>월령별 영양 기준 적용, 개인화된 분석 결과 제공, 서비스 개선</p>
       <p style="font-weight:700;color:var(--text);margin:12px 0 4px;">외부 AI 서비스 전송</p>
-      <p>AI 상담 기능은 Anthropic Claude API를 사용합니다. 상담 질문 내용과 아이 연령 정보가 외부 서버로 전송됩니다. 아이 이름은 전송되지 않습니다.</p>
+      <p>AI 상담과 라벨 인식 기능은 Anthropic Claude API를 사용합니다. 상담 질문 내용, 아이 연령·수유 방식·체중(입력 시), 등록한 영양제의 성분 합계, 그리고 라벨 사진이 처리 목적으로만 전송됩니다. 라벨 사진은 성분 추출 후 저장되지 않으며, 아이 이름은 전송되지 않습니다.</p>
       <p style="font-weight:700;color:var(--text);margin:12px 0 4px;">보관 및 파기</p>
       <p>비회원: 기기 내 localStorage에만 저장, 언제든 앱 데이터 초기화로 삭제 가능<br>
       회원: Supabase(미국 소재 클라우드) 서버에 저장, 계정 탈퇴 시 30일 이내 파기</p>
       <p style="font-weight:700;color:var(--text);margin:12px 0 4px;">아동 정보 처리 및 법정대리인 동의</p>
-      <p>본 서비스는 영유아 보호자가 이용하는 서비스입니다. 아이의 생년월일·성별 등 건강 관련 정보는 보호자가 직접 입력·관리합니다.<br>
+      <p>본 서비스는 영유아 보호자가 이용하는 서비스입니다. 아이의 생년월일·성별·수유 방식·몸무게 등 건강 관련 정보는 보호자가 직접 입력·관리하며, 모두 선택 입력(생년월일 제외)입니다.<br>
       만 14세 미만 아동의 개인정보는 법정대리인(보호자)이 동의한 범위 내에서만 처리되며, 서비스 가입 및 이용 자체가 보호자의 동의로 간주됩니다.</p>
       <p style="font-weight:700;color:var(--text);margin:12px 0 4px;">회원 탈퇴 및 데이터 삭제</p>
       <p>회원 탈퇴 요청 시 서버 데이터는 30일 이내 파기됩니다.<br>

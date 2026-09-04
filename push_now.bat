@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat: product name search -> auto-fill nutrients (scan screen + add-supplement modal) from approved product DB"
+git commit -m "chore: update image-transfer notice and privacy policy for server-side vision OCR"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
