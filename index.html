@@ -214,6 +214,13 @@ input[type=date]::-webkit-calendar-picker-indicator {
 /* 네비게이션 접근성: nav/button 요소로 변경 */
 nav.bnav { display:flex; }
 button.ni { background:none; border:none; font-family:inherit; }
+.psearch{position:absolute;left:0;right:0;top:100%;z-index:50;background:#fff;border:1px solid var(--divider);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:240px;overflow-y:auto;margin-top:4px;}
+.psearch .pi{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--divider);}
+.psearch .pi:last-child{border-bottom:none;}
+.psearch .pi:hover,.psearch .pi:focus{background:var(--primary-light);outline:none;}
+.psearch .pi b{font-size:13px;color:var(--text);display:block;}
+.psearch .pi span{font-size:11px;color:var(--text-sub);}
+.psearch .pempty{padding:10px 12px;font-size:11px;color:var(--text-hint);}
 </style>
 <script type="application/ld+json">
 {
@@ -547,7 +554,10 @@ button.ni { background:none; border:none; font-family:inherit; }
       <p style="font-size:11px;color:#C8920A;margin-top:3px;line-height:1.5;">제품 뒷면 또는 측면의 <b>영양·기능 정보</b> 표를<br>밝은 곳에서 흔들림 없이 찍어주세요</p>
     </div>
     <div class="card">
-      <div class="field"><label class="flabel" for="scan-name">제품 이름</label><input type="text" id="scan-name" placeholder="예: 베비언스 비타민D"></div>
+      <div class="field" style="position:relative;"><label class="flabel" for="scan-name">제품 이름 <span style="font-weight:400;color:var(--text-hint);">(입력하면 등록된 제품을 찾아 성분을 채워요)</span></label>
+        <input type="text" id="scan-name" placeholder="예: 베비언스 비타민D" autocomplete="off" oninput="productSearchInput('scan-name','scan-search-results')" onfocus="productSearchInput('scan-name','scan-search-results')">
+        <div id="scan-search-results" class="psearch" style="display:none;"></div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
         <div class="field"><label class="flabel" for="inp-vitD">☀️ 비타민D (IU)</label><input type="number" id="inp-vitD" placeholder="400" min="0" aria-label="비타민D 함량(IU)"></div>
         <div class="field"><label class="flabel" for="inp-vitC">🍊 비타민C (mg)</label><input type="number" id="inp-vitC" placeholder="40" min="0" aria-label="비타민C 함량(mg)"></div>
@@ -846,7 +856,10 @@ button.ni { background:none; border:none; font-family:inherit; }
   <div class="modal-sheet">
     <div class="mhandle"></div>
     <p style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:16px;">💊 영양제 추가</p>
-    <div class="field"><label class="flabel">이름</label><input type="text" id="add-name" placeholder="제품명 입력"></div>
+    <div class="field" style="position:relative;"><label class="flabel">이름</label><input type="text" id="add-name" placeholder="제품명 입력 (등록된 제품이면 성분 자동)" autocomplete="off" oninput="productSearchInput('add-name','add-search-results')" onfocus="productSearchInput('add-name','add-search-results')">
+      <div id="add-search-results" class="psearch" style="display:none;"></div>
+      <div id="add-nutrients-badge" style="display:none;font-size:11px;color:#2E9E84;margin-top:4px;"></div>
+    </div>
     <div class="field"><label class="flabel">이모지</label>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <span class="eo sel" onclick="selE(this,'💊')" style="font-size:24px;cursor:pointer;opacity:1;">💊</span>
@@ -1808,6 +1821,60 @@ function parseNutritionText(raw){
 
 // ===== ANALYSIS =====
 let lastResult=null;
+// ── 제품 DB 검색 (관리자가 승인·공개한 제품만) ────────────────
+let _psTimer=null, _psCache={};
+let addModalNutrients=null; // 등록 모달에서 선택한 제품 성분
+function productSearchInput(inputId, boxId){
+  const q=(document.getElementById(inputId)?.value||'').trim();
+  const box=document.getElementById(boxId); if(!box) return;
+  clearTimeout(_psTimer);
+  if(inputId==='add-name'){ addModalNutrients=null; const b=document.getElementById('add-nutrients-badge'); if(b) b.style.display='none'; }
+  if(q.length<2){ box.style.display='none'; return; }
+  _psTimer=setTimeout(async()=>{
+    const items=await searchProducts(q);
+    if(!items.length){ box.innerHTML='<div class="pempty">등록된 제품이 없어요 — 라벨을 스캔하면 자동으로 후보에 올라가요</div>'; box.style.display='block'; return; }
+    box.innerHTML=items.map((p,i)=>`<div class="pi" tabindex="0" data-i="${i}" onclick="pickProduct('${inputId}','${boxId}',${i})" onkeydown="if(event.key==='Enter')pickProduct('${inputId}','${boxId}',${i})"><b>${escapeHtml(p.product_name)}</b><span>${escapeHtml(p.brand||'')} · 성분 ${p.product_nutrients.length}개${p.serving?' · '+escapeHtml(p.serving):''}</span></div>`).join('');
+    box.style.display='block'; box._items=items;
+  },250);
+}
+async function searchProducts(q){
+  const key=q.toLowerCase(); if(_psCache[key]) return _psCache[key];
+  try{
+    const enc=encodeURIComponent('*'+q.replace(/[%_*,()]/g,' ').trim()+'*');
+    const url=SUPA_URL+'/rest/v1/products?select=id,brand,product_name,internal_note,product_nutrients(nutrient_name,amount_per_serving,unit)&is_active=eq.true&or=(product_name.ilike.'+enc+',brand.ilike.'+enc+')&limit=8';
+    const r=await fetch(url,{headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}});
+    if(!r.ok) return [];
+    const rows=await r.json();
+    const items=(rows||[]).map(p=>({...p, product_nutrients:p.product_nutrients||[], serving:(p.internal_note||'').match(/1회분 ([^·]+)/)?.[1]?.trim()||''}));
+    _psCache[key]=items; return items;
+  }catch(e){ console.warn('product search', e); return []; }
+}
+function productToInputs(p){
+  const out={};
+  (p.product_nutrients||[]).forEach(n=>{ const k=n.nutrient_name; if(NUT[k]&&n.amount_per_serving>0) out[k]=Number(n.amount_per_serving); });
+  return out;
+}
+function pickProduct(inputId, boxId, idx){
+  const box=document.getElementById(boxId); const p=box?._items?.[idx]; if(!p) return;
+  box.style.display='none';
+  document.getElementById(inputId).value=p.product_name;
+  const inputs=productToInputs(p);
+  if(inputId==='scan-name'){
+    let filled=0, ext=false;
+    Object.keys(NUT).forEach(k=>{ const el=document.getElementById('inp-'+k); if(!el) return; el.value=''; el.style.background=''; });
+    Object.entries(inputs).forEach(([k,v])=>{ const el=document.getElementById('inp-'+k); if(!el) return; el.value= k==='probiotic'? Math.round(v/1e8*10)/10 : v; el.style.background='#EBF6F2'; filled++; if(NUT[k]?.ext) ext=true; });
+    if(ext) toggleExtNutrients(true);
+    showToast('📦 등록된 제품이에요 · 성분 '+filled+'개 자동 입력');
+    logA('product_pick',{id:p.id,name:p.product_name});
+  } else {
+    addModalNutrients=inputs;
+    const b=document.getElementById('add-nutrients-badge');
+    if(b){ b.style.display='block'; b.textContent='✅ 성분 '+Object.keys(inputs).length+'개가 함께 저장돼 합산 판정에 포함돼요'; }
+  }
+}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+document.addEventListener('click',e=>{ if(!e.target.closest('.psearch') && !['scan-name','add-name'].includes(e.target.id)){ document.querySelectorAll('.psearch').forEach(b=>b.style.display='none'); } });
+
 function toggleExtNutrients(force){
   const box=document.getElementById('ext-nutrients'); const btn=document.getElementById('ext-toggle');
   if(!box) return;
@@ -2492,7 +2559,8 @@ function addSupp(){
   const frequency=document.getElementById('add-frequency')?.value||'daily';
   try{
     addSuppDirect(name,selEmoji,document.getElementById('add-timing').value,document.getElementById('add-memo').value.trim(),
-      {servingSize,servingUnit,dailyServings,frequency,status:addSuppStatus});
+      {servingSize,servingUnit,dailyServings,frequency,status:addSuppStatus,nutrients:addModalNutrients||null});
+    addModalNutrients=null; const nb=document.getElementById('add-nutrients-badge'); if(nb) nb.style.display='none';
     closeModal('add-modal');
     // 입력 초기화
     document.getElementById('add-name').value='';

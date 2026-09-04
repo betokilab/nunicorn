@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix: analyzeNutrients crashed for logged-in users (PostgrestBuilder has no .catch)"
+git commit -m "feat: product name search -> auto-fill nutrients (scan screen + add-supplement modal) from approved product DB"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
