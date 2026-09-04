@@ -9,7 +9,7 @@
  */
 export const config = { runtime: 'edge' };
 
-import { getSettings, userKey, getQuotaCount, incrementQuota, restInsert, supaReady } from './_lib/supa.js';
+import { getSettings, userKey, getQuotaCount, incrementQuota, restInsert, restInsertReturning, restGet, supaReady } from './_lib/supa.js';
 
 // 앱이 다루는 영양소 키 (2차에서 index.html도 이 목록으로 확장)
 export const NUTRIENT_KEYS = {
@@ -169,6 +169,29 @@ export default async function handler(req) {
       if (amt != null && amt > 0) nutrients[k] = { amount: amt, unit: NUTRIENT_KEYS[k].unit, raw: `${v.amount} ${v.unit || ''}`.trim() };
     }
     const found = Object.keys(nutrients).length;
+
+    // 제품 후보 자동 등록 (관리자 승인 전까지 비공개 draft) — 같은 브랜드+제품명 있으면 생략
+    let candidateId = null;
+    if (found >= 2 && parsed.productName && supaReady()) {
+      try {
+        const pname = String(parsed.productName).slice(0, 120).trim();
+        const brand = String(parsed.brand || '미확인').slice(0, 80).trim();
+        const dup = await restGet(`products?select=id&product_name=eq.${encodeURIComponent(pname)}&brand=eq.${encodeURIComponent(brand)}&limit=1`);
+        if (!dup.length) {
+          const created = await restInsertReturning('products', {
+            brand, product_name: pname, product_type: null, is_children: true, is_active: false,
+            data_review_status: 'draft',
+            internal_note: `스캔 자동 후보 · 신뢰도 ${parsed.confidence || '-'} · 1회분 ${parsed.servingSize || '-'}${parsed.notes ? ' · ' + String(parsed.notes).slice(0, 120) : ''}`,
+          });
+          candidateId = created?.[0]?.id || null;
+          if (candidateId) {
+            await restInsert('product_nutrients', Object.entries(nutrients).map(([k, v]) => ({
+              product_id: candidateId, nutrient_name: k, amount_per_serving: v.amount, unit: v.unit,
+            })));
+          }
+        }
+      } catch (e) { console.warn('[ocr] candidate insert skipped:', e.message); }
+    }
 
     await incrementQuota(key, 'scan:');
     await restInsert('scan_events', {

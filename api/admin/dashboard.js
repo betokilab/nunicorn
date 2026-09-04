@@ -31,6 +31,7 @@ export default async function handler(req) {
       newUsers7d, childProfiles, newUsersSince, totalUsers,
       scanHistory7d,
       recentChats, recentFailed, riskQueue,
+      scansToday, scans7d, scansOk7d, draftProducts, tokenChat30d, tokenScan30d,
     ] = await Promise.all([
       // 오늘 상담 수
       supaAdmin.from('chat_logs')
@@ -109,7 +110,27 @@ export default async function handler(req) {
         .order('risk_level', { ascending: false }) // high 먼저
         .order('created_at', { ascending: false })
         .limit(5),
+      // ── 스캔(라벨 인식) 지표 ──
+      supaAdmin.from('scan_events').select('*', { count: 'exact', head: true }).gte('created_at', today).catch(() => ({ count: 0 })),
+      supaAdmin.from('scan_events').select('*', { count: 'exact', head: true }).gte('created_at', d7).catch(() => ({ count: 0 })),
+      supaAdmin.from('scan_events').select('*', { count: 'exact', head: true }).gte('created_at', d7).eq('success', true).catch(() => ({ count: 0 })),
+      // 스캔에서 온 제품 후보 (승인 대기)
+      supaAdmin.from('products').select('*', { count: 'exact', head: true }).eq('data_review_status', 'draft').eq('is_active', false).catch(() => ({ count: 0 })),
+      // ── AI 비용: 30일 토큰 (최근 2000건 샘플) ──
+      supaAdmin.from('chat_logs').select('input_tokens,output_tokens,model').gte('created_at', d30).order('created_at', { ascending: false }).limit(2000).catch(() => ({ data: [] })),
+      supaAdmin.from('scan_events').select('input_tokens,output_tokens,model').gte('created_at', d30).order('created_at', { ascending: false }).limit(2000).catch(() => ({ data: [] })),
     ]);
+
+    // 토큰 합산 + 비용 추정 (USD): Haiku 4.5 기준 입력 $1/M, 출력 $5/M (다른 모델은 Sonnet 기준 $3/$15)
+    const PRICE = (model) => /haiku/i.test(model || '') ? { i: 1, o: 5 } : { i: 3, o: 15 };
+    const sumTokens = (rows) => (rows ?? []).reduce((a, r) => {
+      const pr = PRICE(r.model);
+      a.input += r.input_tokens || 0; a.output += r.output_tokens || 0;
+      a.usd += ((r.input_tokens || 0) * pr.i + (r.output_tokens || 0) * pr.o) / 1_000_000;
+      a.calls += 1; return a;
+    }, { input: 0, output: 0, usd: 0, calls: 0 });
+    const costChat = sumTokens(tokenChat30d.data);
+    const costScan = sumTokens(tokenScan30d.data);
 
     const totalToday = chatToday.count ?? 0;
     const successRate = totalToday > 0
@@ -129,6 +150,22 @@ export default async function handler(req) {
         highPending: riskHigh.count ?? 0,
         cautionPending: riskCaution.count ?? 0,
         totalPendingReview: pendingReview.count ?? 0,
+      },
+      scans: {
+        today: scansToday.count ?? 0,
+        last7d: scans7d.count ?? 0,
+        successRate7d: (scans7d.count ?? 0) > 0 ? Math.round(((scansOk7d.count ?? 0) / scans7d.count) * 100) : null,
+        draftProducts: draftProducts.count ?? 0,
+      },
+      cost30d: {
+        chat: { calls: costChat.calls, inputTokens: costChat.input, outputTokens: costChat.output, usd: Math.round(costChat.usd * 100) / 100 },
+        scan: { calls: costScan.calls, inputTokens: costScan.input, outputTokens: costScan.output, usd: Math.round(costScan.usd * 100) / 100 },
+        totalUsd: Math.round((costChat.usd + costScan.usd) * 100) / 100,
+      },
+      funnel7d: {
+        scans: scans7d.count ?? 0,
+        chats: chat7d.count ?? 0,
+        signups: newUsers7d.count ?? 0,
       },
       users: {
         newLast7d: newUsers7d.count ?? 0,

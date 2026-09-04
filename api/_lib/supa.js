@@ -46,6 +46,20 @@ export async function restInsert(table, row) {
   } catch { return false; }
 }
 
+/** REST INSERT — 생성된 행 반환 (배열) */
+export async function restInsertReturning(table, row) {
+  if (!supaReady()) return null;
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: headers({ 'Prefer': 'return=representation' }),
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
 /** RPC 호출 */
 export async function rpc(fn, args) {
   if (!supaReady()) return { data: null, error: 'not configured' };
