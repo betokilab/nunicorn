@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat: server-side chat quota, /api/ocr (Claude vision), token logging; admin badges; company info"
+git commit -m "feat: 18 nutrients (B-complex, folate, E, K, iodine, selenium, probiotic), feeding/weight onboarding, DB-backed KDRI references"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

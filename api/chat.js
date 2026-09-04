@@ -156,7 +156,7 @@ export default async function handler(req) {
     const u = new URL(req.url);
     if (u.searchParams.get('quota')) {
       const q = await computeQuota(req, u.searchParams.get('userId'));
-      return new Response(JSON.stringify(q), { status: 200, headers: corsHeaders });
+      return new Response(JSON.stringify({ member: q.member, limit: q.limit, used: q.used, left: q.left }), { status: 200, headers: corsHeaders });
     }
     return new Response(JSON.stringify({ error: '잘못된 요청이에요.' }), { status: 405, headers: corsHeaders });
   }
@@ -176,7 +176,7 @@ export default async function handler(req) {
     });
   }
 
-  const { message, childAge, childMonths, supplements, userId, disclaimerShown } = body;
+  const { message, childAge, childMonths, supplements, userId, disclaimerShown, feeding, weightKg } = body;
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return new Response(JSON.stringify({ error: '질문 내용이 비어 있어요.' }), {
@@ -220,7 +220,10 @@ export default async function handler(req) {
     ? supplements.map(s => (s.name || String(s))).slice(0, 10).join(', ')
     : '없음';
 
-  const userContext = `아이 나이: ${childAge || '미설정'}, 현재 복용 중인 영양제: ${supList}`;
+  const FEEDING_LABEL = { breast: '모유 수유', formula: '분유 수유', mixed: '혼합 수유', solid: '이유식·일반식 병행', regular: '일반식' };
+  const feedingTxt = FEEDING_LABEL[feeding] ? `, 수유·식사: ${FEEDING_LABEL[feeding]}` : '';
+  const weightTxt = (typeof weightKg === 'number' && weightKg > 0 && weightKg < 100) ? `, 체중: ${weightKg}kg` : '';
+  const userContext = `아이 나이: ${childAge || '미설정'}${feedingTxt}${weightTxt}, 현재 복용 중인 영양제: ${supList}`;
   const userAgent = req.headers.get('User-Agent') || '';
 
   // 위험 키워드 사전 분류

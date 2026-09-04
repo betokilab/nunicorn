@@ -391,6 +391,24 @@ button.ni { background:none; border:none; font-family:inherit; }
           <button type="button" id="btn-boy" onclick="selectGender('boy')" style="padding:14px;border:2px solid #F3A59B;border-radius:14px;background:white;font-size:15px;font-weight:700;color:#9A8F8B;cursor:pointer;">👦 남아</button>
         </div>
       </div>
+
+      <div>
+        <label class="flabel" for="ob-feeding" style="margin-bottom:5px;">🍼 수유·식사 방식 <span style="font-weight:400;color:#C9C0BC;">(선택)</span></label>
+        <select id="ob-feeding" style="width:100%;padding:14px 12px;border:none;border-radius:14px;font-size:14px;font-weight:700;color:#62534D;background:#FEF2F1;outline:none;cursor:pointer;font-family:inherit;appearance:none;-webkit-appearance:none;">
+          <option value="">선택 안 함</option>
+          <option value="breast">모유 수유</option>
+          <option value="formula">분유 수유</option>
+          <option value="mixed">혼합 수유</option>
+          <option value="solid">이유식·일반식 병행</option>
+          <option value="regular">일반식 (돌 이후)</option>
+        </select>
+        <p style="font-size:11px;color:#9A8F8B;margin:6px 2px 0;">모유·분유 여부에 따라 비타민D·철분 안내가 달라져요.</p>
+      </div>
+
+      <div>
+        <label class="flabel" for="ob-weight" style="margin-bottom:5px;">⚖️ 몸무게 <span style="font-weight:400;color:#C9C0BC;">(선택, kg)</span></label>
+        <input type="number" id="ob-weight" inputmode="decimal" min="1" max="80" step="0.1" placeholder="예: 10.5" style="width:100%;padding:14px 12px;border:none;border-radius:14px;font-size:14px;font-weight:700;color:#62534D;background:#FEF2F1;outline:none;font-family:inherit;">
+      </div>
     </div>
   </div>
 
@@ -538,6 +556,19 @@ button.ni { background:none; border:none; font-family:inherit; }
         <div class="field"><label class="flabel" for="inp-omega3">🐟 오메가3 (mg)</label><input type="number" id="inp-omega3" placeholder="250" min="0" aria-label="오메가3 함량(mg)"></div>
         <div class="field"><label class="flabel" for="inp-vitA">🥕 비타민A (mcg)</label><input type="number" id="inp-vitA" placeholder="200" min="0" aria-label="비타민A 함량(mcg)"></div>
         <div class="field"><label class="flabel" for="inp-mg">🌿 마그네슘 (mg)</label><input type="number" id="inp-mg" placeholder="50" min="0" aria-label="마그네슘 함량(mg)"></div>
+      </div>
+      <button type="button" id="ext-toggle" onclick="toggleExtNutrients()" style="width:100%;margin-top:6px;background:var(--bg);border:1px dashed var(--divider);border-radius:10px;padding:9px;font-size:12px;color:var(--text-sub);cursor:pointer;">➕ 성분 더 보기 (비타민B군·엽산·요오드·유산균 등)</button>
+      <div id="ext-nutrients" style="display:none;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px;">
+        <div class="field"><label class="flabel" for="inp-vitE">🌻 비타민E (mg)</label><input type="number" id="inp-vitE" placeholder="5" min="0" step="0.1" aria-label="비타민E 함량(mg)"></div>
+        <div class="field"><label class="flabel" for="inp-vitK">🥬 비타민K (mcg)</label><input type="number" id="inp-vitK" placeholder="25" min="0" step="0.1" aria-label="비타민K 함량(mcg)"></div>
+        <div class="field"><label class="flabel" for="inp-vitB1">🌾 비타민B1 (mg)</label><input type="number" id="inp-vitB1" placeholder="0.4" min="0" step="0.01" aria-label="비타민B1 함량(mg)"></div>
+        <div class="field"><label class="flabel" for="inp-vitB2">🥛 비타민B2 (mg)</label><input type="number" id="inp-vitB2" placeholder="0.5" min="0" step="0.01" aria-label="비타민B2 함량(mg)"></div>
+        <div class="field"><label class="flabel" for="inp-vitB6">🍌 비타민B6 (mg)</label><input type="number" id="inp-vitB6" placeholder="0.6" min="0" step="0.01" aria-label="비타민B6 함량(mg)"></div>
+        <div class="field"><label class="flabel" for="inp-vitB12">🥩 비타민B12 (mcg)</label><input type="number" id="inp-vitB12" placeholder="0.9" min="0" step="0.01" aria-label="비타민B12 함량(mcg)"></div>
+        <div class="field"><label class="flabel" for="inp-folate">🥦 엽산 (mcg)</label><input type="number" id="inp-folate" placeholder="150" min="0" aria-label="엽산 함량(mcg)"></div>
+        <div class="field"><label class="flabel" for="inp-iodine">🌊 요오드 (mcg)</label><input type="number" id="inp-iodine" placeholder="80" min="0" aria-label="요오드 함량(mcg)"></div>
+        <div class="field"><label class="flabel" for="inp-selenium">🌰 셀레늄 (mcg)</label><input type="number" id="inp-selenium" placeholder="23" min="0" aria-label="셀레늄 함량(mcg)"></div>
+        <div class="field"><label class="flabel" for="inp-probiotic">🦠 유산균 (억 CFU)</label><input type="number" id="inp-probiotic" placeholder="10" min="0" aria-label="유산균 균수(억 CFU)"></div>
       </div>
       <div class="field" style="margin-bottom:0;"><label class="flabel">⏰ 언제 먹일까요?</label>
         <select id="scan-timing">
@@ -960,7 +991,9 @@ const REF=[
    calcium:250, // 250mg AI
    omega3:100,// DHA 100mg (AI)
    vitA:350,  // 350μg RAE AI
-   mg:30},    // 30mg AI
+   mg:30,
+   // ── 확장(2026-09): KDRIs 기준, 전문가 검수 필요 ──
+   vitE:3, vitK:4,  vitB1:0.2, vitB2:0.3, vitB6:0.1, vitB12:0.3, folate:65,  iodine:130, selenium:9,  probiotic:null},    // 30mg AI
 
   // 6~11개월: 충분섭취량(AI) 또는 권장섭취량(RNI)
   {max:11, label:'6~11개월', baby:true,
@@ -971,7 +1004,9 @@ const REF=[
    calcium:300, // 300mg AI
    omega3:120,// DHA 100mg + EPA 기반
    vitA:450,  // 450μg RAE AI
-   mg:55},    // 55mg AI
+   mg:55,
+   // ── 확장(2026-09): KDRIs 기준, 전문가 검수 필요 ──
+   vitE:4, vitK:6,  vitB1:0.3, vitB2:0.4, vitB6:0.3, vitB12:0.5, folate:90,  iodine:180, selenium:12, probiotic:null},    // 55mg AI
 
   // 1~2세 (12~24개월): 권장섭취량(RNI)
   {max:23, label:'12~23개월',baby:true,
@@ -982,7 +1017,9 @@ const REF=[
    calcium:500, // 500mg RNI ★한국 기준
    omega3:150,// n-3 AI 0.7g 기반
    vitA:250,  // 250μg RAE RNI
-   mg:60},    // 60mg RNI
+   mg:60,
+   // ── 확장(2026-09): KDRIs 기준, 전문가 검수 필요 ──
+   vitE:5, vitK:25, vitB1:0.4, vitB2:0.5, vitB6:0.6, vitB12:0.9, folate:150, iodine:80,  selenium:23, probiotic:null},    // 60mg RNI
 
   // 2~3세 (25~36개월): 1~2세 연속 적용
   {max:35, label:'24~35개월',baby:false,
@@ -993,7 +1030,9 @@ const REF=[
    calcium:500, // 500mg RNI ★한국 기준
    omega3:150,
    vitA:250,
-   mg:60},
+   mg:60,
+   // ── 확장(2026-09): KDRIs 기준, 전문가 검수 필요 ──
+   vitE:5, vitK:25, vitB1:0.4, vitB2:0.5, vitB6:0.6, vitB12:0.9, folate:150, iodine:80,  selenium:23, probiotic:null},
 
   // 3~5세 (37~72개월): 권장섭취량(RNI) ★한국 기준
   {max:71, label:'36~71개월',baby:false,
@@ -1004,7 +1043,9 @@ const REF=[
    calcium:600, // 600mg RNI ★한국 유아 기준 (미국 1000mg 아님)
    omega3:180,// n-3 AI 0.9g 기반
    vitA:300,  // 300μg RAE RNI
-   mg:80},    // 80mg RNI
+   mg:80,
+   // ── 확장(2026-09): KDRIs 기준, 전문가 검수 필요 ──
+   vitE:6, vitK:30, vitB1:0.5, vitB2:0.6, vitB6:0.7, vitB12:1.1, folate:180, iodine:90,  selenium:25, probiotic:null},    // 80mg RNI
 
   // 6~11세: 권장섭취량(RNI)
   {max:999,label:'6~12세',   baby:false,
@@ -1015,9 +1056,17 @@ const REF=[
    calcium:700, // 700mg RNI ★한국 기준
    omega3:220,// n-3 AI 1.1g 기반
    vitA:400,  // 400μg RAE RNI
-   mg:120}    // 120mg RNI
+   mg:120,
+   // ── 확장(2026-09): KDRIs 기준, 전문가 검수 필요 ──
+   vitE:7, vitK:40, vitB1:0.7, vitB2:0.9, vitB6:0.9, vitB12:1.3, folate:220, iodine:100, selenium:30, probiotic:null}    // 120mg RNI
 ];
-const NUT={vitD:{l:'비타민D',u:'IU',e:'☀️'},vitC:{l:'비타민C',u:'mg',e:'🍊'},zinc:{l:'아연',u:'mg',e:'🛡️'},iron:{l:'철분',u:'mg',e:'💪'},calcium:{l:'칼슘',u:'mg',e:'🦴'},omega3:{l:'오메가3',u:'mg',e:'🐟'},vitA:{l:'비타민A',u:'mcg',e:'🥕'},mg:{l:'마그네슘',u:'mg',e:'🌿'}};
+const NUT={vitD:{l:'비타민D',u:'IU',e:'☀️'},vitC:{l:'비타민C',u:'mg',e:'🍊'},zinc:{l:'아연',u:'mg',e:'🛡️'},iron:{l:'철분',u:'mg',e:'💪'},calcium:{l:'칼슘',u:'mg',e:'🦴'},omega3:{l:'오메가3',u:'mg',e:'🐟'},vitA:{l:'비타민A',u:'mcg',e:'🥕'},mg:{l:'마그네슘',u:'mg',e:'🌿'},
+  // 확장 영양소 (2026-09)
+  vitE:{l:'비타민E',u:'mg',e:'🌻',ext:true},vitK:{l:'비타민K',u:'mcg',e:'🥬',ext:true},
+  vitB1:{l:'비타민B1',u:'mg',e:'🌾',ext:true},vitB2:{l:'비타민B2',u:'mg',e:'🥛',ext:true},vitB6:{l:'비타민B6',u:'mg',e:'🍌',ext:true},vitB12:{l:'비타민B12',u:'mcg',e:'🥩',ext:true},
+  folate:{l:'엽산',u:'mcg',e:'🥦',ext:true},iodine:{l:'요오드',u:'mcg',e:'🌊',ext:true},selenium:{l:'셀레늄',u:'mcg',e:'🌰',ext:true},
+  probiotic:{l:'유산균',u:'CFU',e:'🦠',ext:true,info:true}};
+const NUT_CORE=['vitD','vitC','zinc','iron','calcium','omega3','vitA','mg'];
 // 상한 섭취량(UL) - 가장 낮은 연령 기준 (보수적 적용)
 // 출처: KDRIs 2020
 const UL={
@@ -1028,13 +1077,28 @@ const UL={
   calcium:2500,// mg (공통)
   omega3:null, // 소아 공식 상한 기준 없음
   vitA:600,   // μg RAE (영아 600, 유아 이상은 getAgeUL 사용)
-  mg:65       // mg (1~2세 보충제 UL, 보수적 기준)
+  mg:65,      // mg (1~2세 보충제 UL, 보수적 기준)
+  vitE:100,   // mg α-TE (1~2세)
+  vitK:null,  // 상한 없음
+  vitB1:null, vitB2:null, vitB12:null,
+  vitB6:25,   // mg (1~2세)
+  folate:300, // μg (1~2세, 보충제 엽산 기준)
+  iodine:250, // μg (영아)
+  selenium:40,// μg (0~5개월)
+  probiotic:null
 };
 
 // 연령별 상한섭취량(UL) 조회 — 단일 제품 섭취량 기준
 // 출처: 보건복지부·한국영양학회 「2020 한국인 영양소 섭취기준(KDRIs)」
 // ※ 현재 KDRIs 2020 기준 적용. 2025 개정본 공식 확인 후 업데이트 예정.
+// DB(nutrition_references)에서 불러온 상한값: {label:{key:ul|null}} — 로드 성공 시 하드코딩보다 우선
+let UL_DB=null;
 function getAgeUL(key,months){
+  if(UL_DB){
+    const g=REF.find(r=>months<=r.max)||REF[REF.length-1];
+    const row=UL_DB[g.label];
+    if(row && key in row) return row[key];
+  }
   const t={
     vitD: months<=11?1000:months<=35?2000:3000,  // IU (영아 25μg / 유아 50μg / 3세↑ 75μg)
     vitA: months<=35?600:months<=71?700:900,      // μg RAE
@@ -1043,7 +1107,15 @@ function getAgeUL(key,months){
     iron: 40,                                      // mg (전 연령 공통)
     calcium: 2500,                                 // mg (공통)
     mg:    months<=23?65:months<=71?110:200,       // mg (보충제 기준)
-    omega3: null                                   // 소아 공식 상한 없음
+    omega3: null,                                  // 소아 공식 상한 없음
+    // ── 확장 (KDRIs 상한섭취량, 전문가 검수 필요) ──
+    vitE:  months<=11?null:months<=35?100:months<=71?150:200, // mg α-TE
+    vitK:  null, vitB1: null, vitB2: null, vitB12: null,
+    vitB6: months<=11?null:months<=35?25:months<=71?35:45,    // mg
+    folate:months<=11?null:months<=35?300:months<=71?400:500, // μg (보충제 엽산)
+    iodine:months<=11?250:months<=71?300:500,                 // μg
+    selenium:months<=5?40:months<=11?65:months<=35?70:months<=71?100:150, // μg
+    probiotic: null
   };
   return t[key]??null;
 }
@@ -1061,6 +1133,24 @@ function getEffectiveMonths(){
   return S.profile.months??18;
 }
 const getRef=()=>{const m=getEffectiveMonths();return REF.find(r=>m<=r.max)||REF[REF.length-1];};
+
+// ── 기준값 DB 로드: 관리자 페이지에서 수정한 권장량/상한량을 반영 ──
+async function loadRefsFromDB(){
+  try{
+    const res=await fetch(SUPA_URL+'/rest/v1/nutrition_references?select=nutrient_key,age_group_label,recommended_intake,upper_limit',{headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}});
+    if(!res.ok) return;
+    const rows=await res.json(); if(!Array.isArray(rows)||rows.length<50) return;
+    const ul={}; let applied=0;
+    for(const r of rows){
+      const g=REF.find(x=>x.label===r.age_group_label); if(!g||!NUT[r.nutrient_key]) continue;
+      if(r.recommended_intake!=null) g[r.nutrient_key]=Number(r.recommended_intake);
+      else if(NUT[r.nutrient_key].info) g[r.nutrient_key]=null;
+      (ul[r.age_group_label]=ul[r.age_group_label]||{})[r.nutrient_key]= r.upper_limit==null?null:Number(r.upper_limit);
+      applied++;
+    }
+    if(applied>=50){ UL_DB=ul; window.__refsFromDB=applied; }
+  }catch(e){ console.warn('refs db load skipped', e?.message); }
+}
 
 // 생년월일로 정확한 개월 수 계산
 function calcMonthsFromBirthdate(birthdate) {
@@ -1274,6 +1364,8 @@ async function runPendingMigration(userId) {
         birthdate: pending.profile.birthdate || null,
         gender:    pending.profile.gender    || '',
         months:    pending.profile.months    ??null,
+        feeding:   pending.profile.feeding   ||null,
+        weight_kg: pending.profile.weight    ??null,
         ageSet:    pending.profile.ageSet    ||false,
         emoji:     pending.profile.emoji     || '👶'
       }, { onConflict: 'user_id' });
@@ -1346,6 +1438,8 @@ async function syncToSupa() {
         birthdate: S.profile.birthdate || null,
         gender:    S.profile.gender    || '',
         months:    S.profile.months    ??null,
+        feeding:   S.profile.feeding   ||null,
+        weight_kg: S.profile.weight    ??null,
         ageSet:    S.profile.ageSet    ||false,
         emoji:     S.profile.emoji     || '👶'
       }, { onConflict: 'user_id' });
@@ -1387,6 +1481,8 @@ async function loadFromSupa() {
       S.profile.name      = child.name;
       S.profile.birthdate = child.birthdate || S.profile.birthdate;
       S.profile.gender    = child.gender    || S.profile.gender;
+      S.profile.feeding   = child.feeding   || S.profile.feeding || '';
+      S.profile.weight    = child.weight_kg ?? S.profile.weight ?? null;
       S.profile.months    = child.months    ??S.profile.months;
       S.profile.ageSet    = child.ageSet    ||S.profile.ageSet;
       S.profile.emoji     = child.emoji     || S.profile.emoji;
@@ -1423,6 +1519,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   });
   load();
   initSupa();
+  loadRefsFromDB();
   initOBSelects();
   setupAgeGrid('edit-age-grid');
   if(S.profile.name){showScreen('home');renderHome();}
@@ -1520,6 +1617,8 @@ function completeOB(){
   S.profile.name=name||'우리 아이';
   S.profile.birthdate=birthdate;
   S.profile.gender=selGender||'';
+  S.profile.feeding=document.getElementById('ob-feeding')?.value||'';
+  const w=parseFloat(document.getElementById('ob-weight')?.value); S.profile.weight=(!isNaN(w)&&w>0)?Math.round(w*10)/10:null;
   S.profile.months=months;
   S.profile.emoji=getAutoEmoji(months,selGender||'');
   S.profile.ageSet=true;
@@ -1631,10 +1730,16 @@ async function callOCRServer(b64){
     if(json.error){ showToast('📋 '+json.error); return; }
     lastScanMeta={productName:json.productName||null, brand:json.brand||null, servingSize:json.servingSize||null, confidence:json.confidence||null, notes:json.notes||null};
     let filled=0;
+    let extFilled=false;
     Object.entries(json.nutrients||{}).forEach(([key,v])=>{
       const el=document.getElementById('inp-'+key);
-      if(el && v && v.amount>0){ el.value=v.amount; el.style.background='#EBF6F2'; filled++; }
+      if(el && v && v.amount>0){
+        el.value = key==='probiotic' ? Math.round(v.amount/1e8*10)/10 : v.amount;
+        el.style.background='#EBF6F2'; filled++;
+        if(NUT[key]?.ext) extFilled=true;
+      }
     });
+    if(extFilled) toggleExtNutrients(true);
     const pn=document.getElementById('scan-name');
     if(pn){ pn.value = json.productName || pn.value || ''; }
     if(filled>0){
@@ -1681,11 +1786,20 @@ function parseNutritionText(raw){
 
 // ===== ANALYSIS =====
 let lastResult=null;
+function toggleExtNutrients(force){
+  const box=document.getElementById('ext-nutrients'); const btn=document.getElementById('ext-toggle');
+  if(!box) return;
+  const open = force===true ? true : box.style.display==='none';
+  box.style.display = open ? 'grid' : 'none';
+  if(btn) btn.textContent = open ? '➖ 기본 성분만 보기' : '➕ 성분 더 보기 (비타민B군·엽산·요오드·유산균 등)';
+}
 function analyzeNutrients(){
   const name=document.getElementById('scan-name').value.trim()||'분석된 제품';
   const inputs={};
-  ['vitD','vitC','zinc','iron','calcium','omega3','vitA','mg'].forEach(k=>{
-    const v=parseFloat(document.getElementById('inp-'+k).value);
+  Object.keys(NUT).forEach(k=>{
+    const el=document.getElementById('inp-'+k); if(!el) return;
+    let v=parseFloat(el.value);
+    if(k==='probiotic'&&!isNaN(v)) v=v*1e8; // 억 CFU → CFU
     if(!isNaN(v)&&v>0)inputs[k]=v;
   });
   if(!Object.keys(inputs).length){showToast('성분을 하나 이상 입력해주세요');return;}
@@ -1722,8 +1836,24 @@ function renderResult(name,inputs,ref){
   const crit=ref.baby?['vitD','iron','omega3']:[];
   const ageMo=S.profile.birthdate?calcMonthsFromBirthdate(S.profile.birthdate):S.profile.months;
   let nh='';
+  // 영아 수유 방식별 안내 (진단·처방 아님, 일반 정보)
+  if(ageMo<=11 && S.profile.feeding){
+    const f=S.profile.feeding; let tip='';
+    if(f==='breast') tip='모유 수유 아기는 비타민D가 부족하기 쉬워 보충이 흔히 권장돼요. 6개월 이후에는 철분 섭취도 함께 살펴보세요.';
+    else if(f==='formula') tip='분유에는 비타민D·철분이 이미 들어 있어요. 분유 1일 섭취량의 함량을 확인한 뒤 이 제품과 합산해 보세요.';
+    else if(f==='mixed') tip='혼합 수유는 분유량에 따라 비타민D·철분 섭취가 달라져요. 분유 섭취량이 적다면 모유 수유 기준을 참고하세요.';
+    else if(f==='solid') tip='이유식 시작 후에는 철분이 풍부한 식품(고기·달걀노른자 등)과 보충제 섭취를 함께 고려해 주세요.';
+    if(tip) nh+=`<div style="background:var(--yellow-light);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.6;color:var(--text);">🍼 <b>${f==='breast'?'모유':f==='formula'?'분유':f==='mixed'?'혼합':'이유식'} 수유 참고</b><br>${tip}<br><span style="color:var(--text-hint);font-size:11px;">※ 참고 정보예요. 실제 보충 여부는 소아과 전문의와 상의해 주세요.</span></div>`;
+  }
   Object.keys(inputs).forEach(k=>{
-    const n=NUT[k];if(!n)return;const val=inputs[k],rec=ref[k];if(!rec)return;
+    const n=NUT[k];if(!n)return;const val=inputs[k],rec=ref[k];
+    if(!rec && !n.info) return;
+    if(n.info){
+      // 유산균 등 권장량 기준이 없는 성분: 정보만 표시
+      const disp = k==='probiotic' ? (val/1e8).toFixed(val%1e8?1:0)+'억 CFU' : val+n.u;
+      nh+=`<div style="display:flex;align-items:center;gap:9px;margin-bottom:13px;"><span style="font-size:18px;width:24px;">${n.e}</span><div style="flex:1;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:13px;font-weight:700;">${n.l}</span><span style="font-size:12px;color:var(--text-sub);">${disp}</span></div><span class="tag" style="background:#EDE7FC;color:#7B6DBB;">권장량 기준 없음 · 참고 정보</span></div></div>`;
+      return;
+    }
     const pct=val/rec;const bp=Math.min(pct*100,200);
     const ageULVal=getAgeUL(k,ageMo);
     // ★ 핵심 수정: 제품 함량만으로 결핍/과다 판정하지 않음
@@ -1928,6 +2058,8 @@ async function sendChat(){
         message: q,
         childAge: ref.label,
         childMonths: S.profile.months||null,
+        feeding: S.profile.feeding||null,
+        weightKg: S.profile.weight||null,
         // 개인정보 최소화: 이름 대신 연령 라벨만 전송, userId는 익명 식별용
         userId: S.member?.id||null,
         disclaimerShown: true,
