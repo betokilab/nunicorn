@@ -475,6 +475,7 @@ button.ni { background:none; border:none; font-family:inherit; }
     </div>
     <div class="card" style="padding:8px 14px;" id="home-supp-list"></div>
     <p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-top:6px;margin-bottom:6px;">📊 이 나이 권장량</p>
+    <div id="home-totals"></div>
     <div class="card" id="home-ref-table" style="padding:10px 14px;"></div>
     <button onclick="showScreen('insights')" style="background:var(--card);color:var(--text);border:none;border-radius:var(--radius-sm);padding:12px;font-size:13px;font-weight:700;width:100%;cursor:pointer;box-shadow:var(--shadow-sm);margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px;">📊 우리아이 영양 리포트 보기</button>
 
@@ -1455,7 +1456,11 @@ async function syncToSupa() {
       await supa.from('supplements').upsert({
         id: s.id, user_id: supaUser.id,
         name: s.name, emoji: s.emoji,
-        timing: s.timing, memo: s.memo || ''
+        timing: s.timing, memo: s.memo || '',
+        nutrients: s.nutrients || null,
+        daily_servings: s.dailyServings || 1,
+        frequency: s.frequency || 'daily',
+        status: s.status || 'active'
       });
     }
     const t = today();
@@ -1497,7 +1502,7 @@ async function loadFromSupa() {
     }
     const { data: supps } = await supa.from('supplements').select('*').eq('user_id', supaUser.id);
     if (supps?.length) {
-      S.supplements = supps.map(s => ({ id: s.id, name: s.name, emoji: s.emoji, timing: s.timing, memo: s.memo }));
+      S.supplements = supps.map(s => ({ id: s.id, name: s.name, emoji: s.emoji, timing: s.timing, memo: s.memo, nutrients: s.nutrients || null, dailyServings: s.daily_servings || 1, frequency: s.frequency || 'daily', status: s.status || 'active' }));
     }
     const t = today();
     const { data: logs } = await supa.from('daily_logs').select('*').eq('user_id', supaUser.id).eq('log_date', t);
@@ -1672,6 +1677,23 @@ function renderHome(){
     }).join('');
   }
   const keys=ref.baby?['vitD','iron','omega3','zinc','calcium','vitC']:['vitD','vitC','zinc','iron','calcium','omega3'];
+  // ── 오늘 총 보충량 (등록된 영양제 성분 합산 vs 상한) ──
+  (function(){
+    const box=document.getElementById('home-totals'); if(!box) return;
+    const t=dailyTotals(); const em=getEffectiveMonths(); const miss=suppsWithoutNutrients().length;
+    const ks=Object.keys(t).filter(k=>NUT[k]&&!NUT[k].info);
+    if(!ks.length){ box.innerHTML = S.supplements.length && miss ? `<div class="card" style="padding:10px 14px;"><p style="font-size:11px;color:var(--text-sub);line-height:1.6;">🧮 등록된 영양제 ${miss}개에 성분 정보가 없어 <b>합산 점검</b>이 꺼져 있어요. 라벨 스캔 후 "일정에 추가"하면 켜져요.</p></div>` : ''; return; }
+    const rows=ks.map(k=>{const ul=getAgeUL(k,em);const r=ul?t[k]/ul:null;return {k,v:t[k],ul,r};}).sort((a,b)=>(b.r??-1)-(a.r??-1));
+    const over=rows.filter(r=>r.ul&&r.v>r.ul).length, near=rows.filter(r=>r.ul&&r.r>=0.8&&r.v<=r.ul).length;
+    const color=over?'#F3A59B':near?'#F3D68A':'#C8E1D4';
+    const headline=over?`⚠️ ${over}개 성분이 상한을 넘고 있어요 — 소아과 확인을 권해요`:near?`🟡 ${near}개 성분이 상한에 가까워요`:`✅ 모든 성분이 상한 이내예요`;
+    box.innerHTML=`<div class="card" style="padding:10px 14px;border-left:4px solid ${color};">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><p style="font-size:12px;font-weight:800;color:var(--text);">🧮 영양제 합산 1일 보충량</p><span style="font-size:10px;color:var(--text-hint);">${ref.label} 상한 기준</span></div>
+      <p style="font-size:11px;font-weight:700;margin-bottom:6px;color:${over?'#C0392B':near?'#B8860B':'#2E9E84'};">${headline}</p>
+      ${rows.slice(0,6).map(r=>`<div style="display:flex;align-items:center;gap:8px;margin:4px 0;"><span style="width:16px;font-size:13px;">${NUT[r.k].e}</span><span style="flex:1;font-size:11px;font-weight:600;">${NUT[r.k].l}</span><span style="font-size:11px;color:var(--text-sub);">${fmtAmt(r.k,r.v)}${r.ul?' / '+fmtAmt(r.k,r.ul):''}</span><div style="width:64px;height:6px;background:#EEE;border-radius:3px;overflow:hidden;"><div style="width:${r.ul?Math.min(100,Math.round(r.r*100)):0}%;height:100%;background:${r.ul&&r.v>r.ul?'#C0392B':r.ul&&r.r>=0.8?'#E0B000':'#2E9E84'};"></div></div></div>`).join('')}
+      ${miss?`<p style="font-size:10px;color:var(--text-hint);margin-top:6px;">※ 성분 미등록 영양제 ${miss}개는 제외</p>`:''}
+    </div>`;
+  })();
   document.getElementById('home-ref-table').innerHTML=keys.map(k=>{
     const n=NUT[k];const crit=ref.baby&&['vitD','iron','omega3'].includes(k);
     return `<div style="display:flex;align-items:center;gap:7px;padding:8px 0;border-bottom:1px solid rgba(98,83,77,0.06);">
@@ -1916,7 +1938,39 @@ function renderResult(name,inputs,ref){
       ih=`<div class="icard" style="background:var(--ok-bg);"><span style="font-size:18px;">✨</span><div><div style="font-size:12px;font-weight:700;color:#2E9E84;">성분 간 특별한 주의사항 없어요</div><div style="font-size:11px;color:#2E9E84;">영양소가 사이좋게 흡수될 수 있어요 🎉</div></div></div>`;
     }
   }
-  document.getElementById('result-interactions').innerHTML=ih;
+  // ── 현재 복용 영양제와 합산 판정 ──
+  const totals=dailyTotals(name);
+  const missing=suppsWithoutNutrients().filter(s=>s.name!==name);
+  let ch='';
+  const keys=[...new Set([...Object.keys(inputs),...Object.keys(totals)])].filter(k=>NUT[k]&&!NUT[k].info);
+  if(Object.keys(totals).length){
+    let overs=0, nears=0;
+    const rows=keys.map(k=>{
+      const prev=totals[k]||0, add=inputs[k]||0, sum=prev+add, ul=getAgeUL(k,ageMo);
+      const ratio=ul?sum/ul:null; let tag='',color='var(--text-sub)';
+      if(ul&&sum>ul){overs++;tag='<span class="tag tbad">합산 초과</span>';color='#C0392B';}
+      else if(ul&&ratio>=0.8){nears++;tag='<span class="tag twarn">상한 '+Math.round(ratio*100)+'%</span>';color='#B8860B';}
+      else if(!ul) tag='<span class="tag" style="background:#EDE7FC;color:#7B6DBB;">상한 없음</span>';
+      else tag='<span class="tag" style="background:#EBF6F2;color:#2E9E84;">상한 '+Math.round(ratio*100)+'%</span>';
+      return {k,prev,add,sum,ul,ratio:ratio??-1,tag,color};
+    }).sort((a,b)=>b.ratio-a.ratio);
+    const head = overs>0
+      ? `<p style="font-size:12px;font-weight:800;color:#C0392B;margin-bottom:6px;">⚠️ 이 제품을 추가하면 ${overs}개 성분이 상한을 넘어요</p><p style="font-size:11px;color:#8A4A44;margin-bottom:8px;">지금 먹이는 영양제와 겹치는 성분이 있어요. 추가 전에 소아과 전문의와 상의해 주세요.</p>`
+      : nears>0
+        ? `<p style="font-size:12px;font-weight:800;color:#B8860B;margin-bottom:8px;">🟡 합산하면 상한에 가까운 성분이 있어요</p>`
+        : `<p style="font-size:12px;font-weight:800;color:#2E9E84;margin-bottom:8px;">✅ 지금 먹이는 영양제와 합쳐도 상한 이내예요</p>`;
+    ch=`<div class="card" style="border-left:4px solid ${overs?'#F3A59B':nears?'#F3D68A':'#C8E1D4'};">
+      <p style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px;">🧮 현재 복용 영양제 + 이 제품 = 1일 합산</p>${head}
+      <table style="width:100%;font-size:11px;border-collapse:collapse;">
+        <thead><tr style="color:var(--text-hint);"><th style="text-align:left;padding:3px 0;">성분</th><th style="text-align:right;">기존</th><th style="text-align:right;">이 제품</th><th style="text-align:right;">합계</th><th style="text-align:right;">판정</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr style="border-top:1px solid var(--divider);"><td style="padding:5px 0;font-weight:700;">${NUT[r.k].e} ${NUT[r.k].l}</td><td style="text-align:right;color:var(--text-sub);">${r.prev?fmtAmt(r.k,r.prev):'-'}</td><td style="text-align:right;">${r.add?fmtAmt(r.k,r.add):'-'}</td><td style="text-align:right;font-weight:800;color:${r.color};">${fmtAmt(r.k,r.sum)}</td><td style="text-align:right;">${r.tag}</td></tr>`).join('')}</tbody>
+      </table>
+      ${missing.length?`<p style="font-size:10px;color:var(--text-hint);margin-top:8px;">※ 성분 미등록 영양제 ${missing.length}개(${missing.map(m=>m.name).slice(0,3).join(', ')})는 합산에서 빠졌어요. 라벨을 스캔해 "일정에 추가"하면 반영돼요.</p>`:''}
+    </div>`;
+  } else if(S.supplements.some(s=>(!s.status||s.status==='active'))){
+    ch=`<div class="card" style="border-left:4px solid #E8E8E8;"><p style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">🧮 합산 판정을 하려면</p><p style="font-size:11px;color:var(--text-sub);line-height:1.6;">지금 등록된 영양제 ${missing.length}개에 성분 정보가 없어요. 각 제품 라벨을 스캔한 뒤 <b>일정에 추가</b>를 누르면 성분이 저장되고, 다음 스캔부터 겹치는 성분을 자동으로 합산해 드려요.</p></div>`;
+  }
+  document.getElementById('result-interactions').innerHTML=ch+ih;
   const tips=[];
   if(ref.baby)tips.push('👶 0~24개월은 비타민D·철분·오메가3가 뇌 발달에 특히 중요해요!');
   if(['vitD','vitA'].some(k=>inputs[k]))tips.push('🍳 지용성 비타민(D·A)은 지방이 든 식사 후에 드세요!');
@@ -1935,8 +1989,14 @@ function renderResult(name,inputs,ref){
 }
 function saveToSchedule(){
   if(!lastResult)return;
-  addSuppDirect(lastResult.name,'💊',lastResult.timing,'분석에서 추가됨');
-  showToast('📅 일정에 추가했어요!');showScreen('schedule');
+  const existing=S.supplements.find(s=>s.name===lastResult.name);
+  if(existing){
+    existing.nutrients={...lastResult.inputs}; existing.timing=lastResult.timing||existing.timing;
+    save();renderHome();renderSchedule();
+    showToast('✅ 기존 영양제에 성분을 저장했어요');showScreen('schedule');return;
+  }
+  addSuppDirect(lastResult.name,'💊',lastResult.timing,'라벨 분석에서 추가됨',{nutrients:{...lastResult.inputs}});
+  showToast('📅 일정에 추가했어요! 이제 합산 판정에 포함돼요');showScreen('schedule');
 }
 
 // ===== CHAT =====
@@ -2060,6 +2120,7 @@ async function sendChat(){
         childMonths: S.profile.months||null,
         feeding: S.profile.feeding||null,
         weightKg: S.profile.weight||null,
+        regimen: regimenSummary()||null,
         // 개인정보 최소화: 이름 대신 연령 라벨만 전송, userId는 익명 식별용
         userId: S.member?.id||null,
         disclaimerShown: true,
@@ -2454,9 +2515,30 @@ function addSuppDirect(name,emoji,timing,memo,extra={}){
     servingUnit: extra.servingUnit||'정',
     dailyServings: extra.dailyServings||1,
     frequency: extra.frequency||'daily',
-    status: extra.status||'active'
+    status: extra.status||'active',
+    nutrients: extra.nutrients||null   // {key: 1회분 함량} — 합산 판정용
   });
   save();renderHome();renderSchedule();
+}
+
+// ── 합산 판정 헬퍼 ──────────────────────────────────────────
+// 현재 활성 영양제의 1일 보충량 합계 {key: amount}. excludeName: 같은 이름 제품 제외
+function dailyTotals(excludeName){
+  const t={};
+  S.supplements.filter(s=>(!s.status||s.status==='active') && s.nutrients && s.name!==excludeName).forEach(s=>{
+    const mult=(s.dailyServings||1)*(s.frequency==='alternate'?0.5:1);
+    Object.entries(s.nutrients).forEach(([k,v])=>{ if(NUT[k]&&v>0) t[k]=(t[k]||0)+v*mult; });
+  });
+  return t;
+}
+function suppsWithoutNutrients(){ return S.supplements.filter(s=>(!s.status||s.status==='active') && !s.nutrients); }
+function fmtAmt(k,v){ if(k==='probiotic') return (v/1e8).toFixed(v%1e8?1:0)+'억 CFU'; return (Math.round(v*100)/100)+NUT[k].u; }
+// 합산 요약 문자열 (AI 상담 컨텍스트용, 최대 8개)
+function regimenSummary(){
+  const t=dailyTotals(); const em=getEffectiveMonths();
+  const parts=Object.entries(t).sort((a,b)=>{const ua=getAgeUL(a[0],em),ub=getAgeUL(b[0],em);return (ub?b[1]/ub:0)-(ua?a[1]/ua:0);}).slice(0,8)
+    .map(([k,v])=>{const ul=getAgeUL(k,em);return NUT[k].l+' '+fmtAmt(k,v)+(ul?'(상한 '+fmtAmt(k,ul)+')':'');});
+  return parts.length?parts.join(', '):'';
 }
 function delSupp(id){
   if(!confirm('삭제할까요?'))return;

@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(admin): scan-derived product candidates + approval, funnel/cost/scan metrics, KDRI screen labels"
+git commit -m "feat: combined regimen judgment - supplements store nutrients, result sums existing+new vs UL, home daily totals, chat regimen context"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

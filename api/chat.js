@@ -176,7 +176,7 @@ export default async function handler(req) {
     });
   }
 
-  const { message, childAge, childMonths, supplements, userId, disclaimerShown, feeding, weightKg } = body;
+  const { message, childAge, childMonths, supplements, userId, disclaimerShown, feeding, weightKg, regimen } = body;
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return new Response(JSON.stringify({ error: '질문 내용이 비어 있어요.' }), {
@@ -223,7 +223,8 @@ export default async function handler(req) {
   const FEEDING_LABEL = { breast: '모유 수유', formula: '분유 수유', mixed: '혼합 수유', solid: '이유식·일반식 병행', regular: '일반식' };
   const feedingTxt = FEEDING_LABEL[feeding] ? `, 수유·식사: ${FEEDING_LABEL[feeding]}` : '';
   const weightTxt = (typeof weightKg === 'number' && weightKg > 0 && weightKg < 100) ? `, 체중: ${weightKg}kg` : '';
-  const userContext = `아이 나이: ${childAge || '미설정'}${feedingTxt}${weightTxt}, 현재 복용 중인 영양제: ${supList}`;
+  const regimenTxt = (typeof regimen === 'string' && regimen.trim()) ? `\n현재 영양제 합산 1일 보충량(라벨 기준, 음식 제외): ${regimen.slice(0, 400)}` : '';
+  const userContext = `아이 나이: ${childAge || '미설정'}${feedingTxt}${weightTxt}, 현재 복용 중인 영양제: ${supList}${regimenTxt}`;
   const userAgent = req.headers.get('User-Agent') || '';
 
   // 위험 키워드 사전 분류
