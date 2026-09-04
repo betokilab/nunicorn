@@ -18,6 +18,9 @@ export default async function handler(req) {
     const today = now.toISOString().slice(0, 10);
     const d7 = new Date(now - 7 * 86400000).toISOString();
     const d30 = new Date(now - 30 * 86400000).toISOString();
+    // 관리자가 마지막으로 회원 목록을 확인한 시각 (없으면 7일 전)
+    const sinceRaw = new URL(req.url).searchParams.get('since');
+    const since = sinceRaw && !isNaN(Date.parse(sinceRaw)) ? new Date(sinceRaw).toISOString() : d7;
 
     // 병렬 조회
     const [
@@ -25,7 +28,7 @@ export default async function handler(req) {
       successToday, failedToday,
       riskHigh, riskCaution,
       pendingReview,
-      newUsers7d, childProfiles,
+      newUsers7d, childProfiles, newUsersSince, totalUsers,
       scanHistory7d,
       recentChats, recentFailed, riskQueue,
     ] = await Promise.all([
@@ -74,6 +77,15 @@ export default async function handler(req) {
       // 아이 프로필 전체
       supaAdmin.from('user_children')
         .select('*', { count: 'exact', head: true }),
+      // 미확인 신규 회원 (since 이후 가입)
+      supaAdmin.from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .gt('created_at', since)
+        .catch(() => ({ count: 0 })),
+      // 전체 회원
+      supaAdmin.from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .catch(() => ({ count: 0 })),
       // 스캔 이력 7일
       supaAdmin.from('scan_history')
         .select('*', { count: 'exact', head: true })
@@ -120,6 +132,8 @@ export default async function handler(req) {
       },
       users: {
         newLast7d: newUsers7d.count ?? 0,
+        newUnseen: newUsersSince.count ?? 0,
+        total: totalUsers.count ?? 0,
         childProfiles: childProfiles.count ?? 0,
         scansLast7d: scanHistory7d.count ?? 0,
       },

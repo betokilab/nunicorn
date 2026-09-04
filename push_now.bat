@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix(admin): implement auth.admin (listUsers/getUserById/updateUserById) + robust api error handling"
+git commit -m "feat(admin): new-signup badge; chore: company info + contact email + copyright"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

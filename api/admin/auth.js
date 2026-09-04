@@ -95,6 +95,14 @@ export function createSupabaseAdmin() {
         filters.push(`${col}=lte.${encodeURIComponent(val)}`);
         return chain;
       },
+      gt(col, val) {
+        filters.push(`${col}=gt.${encodeURIComponent(val)}`);
+        return chain;
+      },
+      lt(col, val) {
+        filters.push(`${col}=lt.${encodeURIComponent(val)}`);
+        return chain;
+      },
       like(col, val) {
         filters.push(`${col}=like.${encodeURIComponent(val)}`);
         return chain;

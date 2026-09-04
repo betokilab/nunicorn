@@ -142,7 +142,7 @@ textarea{resize:vertical;min-height:80px;}
       <a href="#" class="nav-link" data-page="reviewed"><span class="ico">✅</span> 검수 답변</a>
       <a href="#" class="nav-link" data-page="products"><span class="ico">🧪</span> 제품 DB</a>
       <a href="#" class="nav-link" data-page="nutrition"><span class="ico">📋</span> 영양 기준값</a>
-      <a href="#" class="nav-link" data-page="users"><span class="ico">👤</span> 회원 관리</a>
+      <a href="#" class="nav-link" data-page="users"><span class="ico">👤</span> 회원 관리 <span id="users-badge" title="확인하지 않은 신규 가입자" style="background:#2E7D32;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:auto;display:none">0</span></a>
       <a href="#" class="nav-link" data-page="settings"><span class="ico">⚙️</span> 운영 설정</a>
     </nav>
     <div class="sbfooter" id="sb-role">역할: 확인 중...</div>
@@ -215,6 +215,8 @@ async function verifyAndShow(session) {
   // 대시보드로 시작
   navigate('dashboard');
   updateRiskBadge();
+  // 5분마다 배지 갱신 (신규 가입·위험 검토)
+  if (!window.__badgeTimer) window.__badgeTimer = setInterval(updateRiskBadge, 5 * 60 * 1000);
 }
 
 async function doLogin() {
@@ -384,7 +386,7 @@ function navigate(page) {
     case 'reviewed':      renderReviewed(); break;
     case 'products':      renderProducts(); break;
     case 'nutrition':     renderNutrition(); break;
-    case 'users':         renderUsers(); break;
+    case 'users':         renderUsers(); markUsersSeen(); break;
     case 'settings':      renderSettings(); break;
   }
 }
@@ -394,8 +396,15 @@ document.querySelectorAll('.nav-link').forEach(a => {
 });
 
 // ── 위험 배지 업데이트 ───────────────────────────────────────────
+const USERS_SEEN_KEY = 'nunicorn_admin_users_seen_at';
+function usersSeenAt() { try { return localStorage.getItem(USERS_SEEN_KEY) || ''; } catch { return ''; } }
+function markUsersSeen() { try { localStorage.setItem(USERS_SEEN_KEY, new Date().toISOString()); } catch {} const b=document.getElementById('users-badge'); if (b) b.style.display='none'; }
+
 async function updateRiskBadge() {
-  const data = await apiGet('/api/admin/dashboard');
+  const data = await apiGet('/api/admin/dashboard', { since: usersSeenAt() });
+  const nu = data.users?.newUnseen || 0;
+  const ub = document.getElementById('users-badge');
+  if (ub) { ub.style.display = nu > 0 ? 'inline' : 'none'; ub.textContent = nu; }
   const count = data.risk?.totalPendingReview || 0;
   const badge = document.getElementById('risk-badge');
   badge.style.display = count > 0 ? 'inline' : 'none';
@@ -427,6 +436,7 @@ async function renderDashboard() {
       <div class="stat-box"><div class="sv">${c.last7d}</div><div class="sl">7일 상담</div></div>
       <div class="stat-box"><div class="sv">${c.last30d}</div><div class="sl">30일 상담</div></div>
       <div class="stat-box"><div class="sv">${c.successRate != null ? c.successRate+'%' : 'N/A'}</div><div class="sl">오늘 성공률</div></div>
+      <div class="stat-box" style="cursor:pointer" onclick="navigate('users')"><div class="sv">${u.total ?? 0}</div><div class="sl">전체 회원${u.newUnseen ? ` <span style="color:#2E7D32">(+${u.newUnseen} 신규)</span>` : ''}</div></div>
       <div class="stat-box danger"><div class="sv">${r.highPending}</div><div class="sl">위험 검토 대기</div></div>
       <div class="stat-box warn"><div class="sv">${r.cautionPending}</div><div class="sl">주의 검토 대기</div></div>
       <div class="stat-box"><div class="sv">${u.newLast7d}</div><div class="sl">신규 회원(7일)</div></div>
