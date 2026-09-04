@@ -10,6 +10,7 @@ import {
   DISCLAIMER_MARKERS,
   SYSTEM_PROMPT_POLICY_ADDON,
 } from './prompt-policy.js';
+import { getSettings, userKey, getQuotaCount, incrementQuota, supaReady } from './_lib/supa.js';
 
 const BASE_SYSTEM_PROMPT = `당신은 '코니'입니다. 뉴니콘 앱의 영유아·키즈 영양제 전문 AI 상담사예요.
 한국인 영양소 섭취기준(KDRIs)을 기반으로 0~12세 아이의 영양제에 대해 친절하고 정확하게 안내합니다.
@@ -83,6 +84,7 @@ async function logChat({
   childAgeLabel, childMonths, disclaimerShown, quotaDeducted,
   supplements,
   evalGrade, evalReason, heldForReview, redReviewStatus,
+  inputTokens, outputTokens, model,
 }) {
   const supaUrl = process.env.SUPA_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -107,6 +109,9 @@ async function logChat({
       ...(evalReason      !== undefined && { eval_reason: evalReason }),
       ...(heldForReview   !== undefined && { held_for_review: heldForReview }),
       ...(redReviewStatus !== undefined && { red_review_status: redReviewStatus }),
+      ...(inputTokens  != null && { input_tokens: inputTokens }),
+      ...(outputTokens != null && { output_tokens: outputTokens }),
+      ...(model && { model }),
     };
 
     await fetch(`${supaUrl}/rest/v1/chat_logs`, {
@@ -124,16 +129,36 @@ async function logChat({
   }
 }
 
+async function computeQuota(req, userId, settings) {
+  const st = settings || await getSettings();
+  const { key, member } = await userKey(req, userId);
+  const limit = parseInt(member ? st.member_daily_quota : st.free_daily_quota);
+  const lim = Number.isFinite(limit) ? limit : (member ? 10 : 3);
+  if (!supaReady()) return { key, member, limit: lim, used: 0, left: lim, serverless: true };
+  const used = await getQuotaCount(key);
+  return { key, member, limit: lim, used, left: Math.max(0, lim - used) };
+}
+
 export default async function handler(req) {
   const corsHeaders = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': 'https://www.nunicorn.co.kr',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization'
   };
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // 남은 상담 횟수 조회: GET /api/chat?quota=1&userId=...
+  if (req.method === 'GET') {
+    const u = new URL(req.url);
+    if (u.searchParams.get('quota')) {
+      const q = await computeQuota(req, u.searchParams.get('userId'));
+      return new Response(JSON.stringify(q), { status: 200, headers: corsHeaders });
+    }
+    return new Response(JSON.stringify({ error: '잘못된 요청이에요.' }), { status: 405, headers: corsHeaders });
   }
 
   if (req.method !== 'POST') {
@@ -174,6 +199,23 @@ export default async function handler(req) {
     });
   }
 
+  // 운영 설정 + 서버측 한도
+  const settings = await getSettings();
+  if (settings.maintenance_mode === true) {
+    return new Response(JSON.stringify({ error: settings.maintenance_message || '지금은 점검 중이에요. 잠시 후 다시 이용해 주세요.' }), {
+      status: 503, headers: corsHeaders
+    });
+  }
+  const quota = await computeQuota(req, userId, settings);
+  if (quota.left <= 0) {
+    return new Response(JSON.stringify({
+      error: quota.member
+        ? '오늘 상담 횟수를 모두 사용했어요. 내일 다시 이용해 주세요.'
+        : '무료 상담 횟수를 모두 사용했어요. 가입하면 하루 10회까지 이용할 수 있어요!',
+      quotaLeft: 0, quotaLimit: quota.limit, quotaExceeded: true,
+    }), { status: 429, headers: corsHeaders });
+  }
+
   const supList = Array.isArray(supplements) && supplements.length > 0
     ? supplements.map(s => (s.name || String(s))).slice(0, 10).join(', ')
     : '없음';
@@ -194,7 +236,7 @@ export default async function handler(req) {
       quotaDeducted: false, supplements: supList,
       evalGrade: 'green', evalReason: 'emergency_shortcut',
     });
-    return new Response(JSON.stringify({ reply: EMERGENCY_RESPONSE, evalGrade: 'emergency', quotaDeducted: false }), {
+    return new Response(JSON.stringify({ reply: EMERGENCY_RESPONSE, evalGrade: 'emergency', quotaDeducted: false, quotaLeft: quota.left, quotaLimit: quota.limit }), {
       status: 200, headers: corsHeaders
     });
   }
@@ -212,8 +254,8 @@ export default async function handler(req) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
+        model: String(settings.ai_model || 'claude-haiku-4-5-20251001'),
+        max_tokens: Math.min(Math.max(parseInt(settings.ai_max_tokens) || 512, 128), 2048),
         system: SYSTEM_PROMPT,
         messages: [
           { role: 'user', content: `${userContext}\n\n질문: ${message.trim()}` }
@@ -245,6 +287,7 @@ export default async function handler(req) {
 
     const data = await response.json();
     const reply = data.content?.[0]?.text;
+    const usage = { inputTokens: data.usage?.input_tokens ?? null, outputTokens: data.usage?.output_tokens ?? null, model: data.model || String(settings.ai_model) };
 
     if (!reply) {
       console.error('[nunicorn] Empty reply from API');
@@ -284,9 +327,9 @@ export default async function handler(req) {
         childAgeLabel: childAge, childMonths, disclaimerShown,
         quotaDeducted: false, supplements: supList,
         evalGrade: 'red', evalReason: evaluation.reason,
-        heldForReview: true, redReviewStatus: 'pending',
+        heldForReview: true, redReviewStatus: 'pending', ...usage,
       });
-      return new Response(JSON.stringify({ reply: RED_SAFE_MESSAGE, evalGrade: 'red', quotaDeducted: false }), {
+      return new Response(JSON.stringify({ reply: RED_SAFE_MESSAGE, evalGrade: 'red', quotaDeducted: false, quotaLeft: quota.left, quotaLimit: quota.limit }), {
         status: 200, headers: corsHeaders
       });
     }
@@ -301,10 +344,14 @@ export default async function handler(req) {
       riskLevel: finalRiskLevel, riskFlags: finalRiskFlags,
       childAgeLabel: childAge, childMonths, disclaimerShown,
       quotaDeducted: true, supplements: supList,
-      evalGrade: evaluation.grade, heldForReview: false,
+      evalGrade: evaluation.grade, heldForReview: false, ...usage,
     });
 
-    return new Response(JSON.stringify({ reply: finalReply, evalGrade: evaluation.grade, quotaDeducted: true }), {
+    // 서버측 차감
+    const used = await incrementQuota(quota.key);
+    const left = used == null ? Math.max(0, quota.left - 1) : Math.max(0, quota.limit - used);
+
+    return new Response(JSON.stringify({ reply: finalReply, evalGrade: evaluation.grade, quotaDeducted: true, quotaLeft: left, quotaLimit: quota.limit }), {
       status: 200, headers: corsHeaders
     });
 

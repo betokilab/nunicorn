@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(admin): new-signup badge; chore: company info + contact email + copyright"
+git commit -m "feat: server-side chat quota, /api/ocr (Claude vision), token logging; admin badges; company info"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

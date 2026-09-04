@@ -10,10 +10,7 @@
   gtag('config', 'G-46PD13K6G0');
 </script>
 <meta charset="UTF-8">
-
-  <link rel="preconnect" href="https://api2.ocr.space">
   <link rel="preconnect" href="https://rccakcbjpaplrawvvliy.supabase.co">
-  <link rel="dns-prefetch" href="https://api2.ocr.space">
   <link rel="canonical" href="https://www.nunicorn.co.kr/">
 <link rel="alternate" hreflang="ko" href="https://www.nunicorn.co.kr/">
 <link rel="alternate" hreflang="x-default" href="https://www.nunicorn.co.kr/">
@@ -1095,6 +1092,8 @@ const today=()=>new Date().toISOString().slice(0,10);
 
 // ===== QUOTA =====
 const FREE_LIMIT=3, MEMBER_LIMIT=10;
+// 상담 횟수는 서버(/api/chat)가 기준. 로컬 값은 표시용 캐시.
+let serverQuota=null; // {left, limit}
 function getQuota(){
   const t=today();
   const key='nn_quota_'+t;
@@ -1104,8 +1103,26 @@ function incQuota(){
   const t=today(); const key='nn_quota_'+t;
   localStorage.setItem(key,getQuota()+1);
 }
-function getLimit(){return (supaUser||S.member)?MEMBER_LIMIT:FREE_LIMIT;}
-function quotaLeft(){return Math.max(0,getLimit()-getQuota());}
+function getLimit(){return serverQuota?.limit ?? ((supaUser||S.member)?MEMBER_LIMIT:FREE_LIMIT);}
+function quotaLeft(){
+  if(serverQuota && typeof serverQuota.left==='number') return Math.max(0,serverQuota.left);
+  return Math.max(0,getLimit()-getQuota());
+}
+function applyServerQuota(data){
+  if(!data) return;
+  if(typeof data.quotaLeft==='number'){
+    serverQuota={left:data.quotaLeft, limit:typeof data.quotaLimit==='number'?data.quotaLimit:getLimit()};
+    localStorage.setItem('nn_quota_'+today(), Math.max(0,serverQuota.limit-serverQuota.left));
+    try{updateQuotaBadge();}catch{}
+  }
+}
+async function syncQuotaFromServer(){
+  try{
+    const uid=S.member?.id||supaUser?.id||'';
+    const r=await fetch('/api/chat?quota=1'+(uid?'&userId='+encodeURIComponent(uid):''));
+    if(r.ok){ const d=await r.json(); applyServerQuota({quotaLeft:d.left, quotaLimit:d.limit}); }
+  }catch{}
+}
 function updateQuotaBadge(){
   const left=quotaLeft();
   document.getElementById('chat-quota-badge').textContent='남은 상담 '+left+'회';
@@ -1202,6 +1219,7 @@ function initSupa() {
     supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
     supa.auth.onAuthStateChange(async (event, session) => {
       supaUser = session?.user || null;
+      setTimeout(syncQuotaFromServer, 300);
       if (supaUser && event === 'SIGNED_IN') {
         // 로그인 직후: 마이그레이션 → 데이터 로드 → 화면 복원
         await runPendingMigration(supaUser.id);
@@ -1408,6 +1426,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   initOBSelects();
   setupAgeGrid('edit-age-grid');
   if(S.profile.name){showScreen('home');renderHome();}
+  setTimeout(syncQuotaFromServer, 800);
 });
 
 // ===== SCREENS =====
@@ -1595,38 +1614,42 @@ function runOCR(imgSrc){
     c.width=img.width*ratio; c.height=img.height*ratio;
     c.getContext('2d').drawImage(img,0,0,c.width,c.height);
     const b64=c.toDataURL('image/jpeg',0.85).split(',')[1];
-    callOCRSpace(b64);
+    callOCRServer(b64);
   };
   img.src=imgSrc;
 }
-// TODO[보안]: OCR.Space apikey('helloworld')가 프론트엔드에 노출되어 있습니다.
-// 실운영 전 /api/ocr 서버 프록시로 이동 필요. 현재 'helloworld'는 공용 무료 키이므로
-// 실제 비밀 키가 아니지만, 운영 키 발급 시 반드시 서버사이드로 이전해야 합니다.
-async function callOCRSpace(b64){
+async function callOCRServer(b64){
   const st=document.getElementById('ocr-status');
   try{
-    const fd=new FormData();
-    fd.append('base64Image','data:image/jpeg;base64,'+b64);
-    fd.append('language','kor');
-    fd.append('OCREngine','2');
-    fd.append('isOverlayRequired','false');
-    const res=await fetch('https://api.ocr.space/parse/image',{
+    const res=await fetch('/api/ocr',{
       method:'POST',
-      headers:{'apikey':'helloworld'},
-      body:fd
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({image:b64, mediaType:'image/jpeg', userId:S.member?.id||null})
     });
-    const json=await res.json();
+    let json={}; try{ json=await res.json(); }catch{}
     if(st)st.style.display='none';
-    const text=json?.ParsedResults?.[0]?.ParsedText||'';
-    console.log('[OCR결과]',text);
-    if(!text){showToast('📋 인식 실패, 직접 입력해주세요');return;}
-    parseNutritionText(text);
+    if(json.error){ showToast('📋 '+json.error); return; }
+    lastScanMeta={productName:json.productName||null, brand:json.brand||null, servingSize:json.servingSize||null, confidence:json.confidence||null, notes:json.notes||null};
+    let filled=0;
+    Object.entries(json.nutrients||{}).forEach(([key,v])=>{
+      const el=document.getElementById('inp-'+key);
+      if(el && v && v.amount>0){ el.value=v.amount; el.style.background='#EBF6F2'; filled++; }
+    });
+    const pn=document.getElementById('scan-name');
+    if(pn){ pn.value = json.productName || pn.value || ''; }
+    if(filled>0){
+      showToast('✅ '+filled+'가지 성분 자동 인식됨!'+(json.productName?' · '+json.productName:''));
+      if(json.notes) console.log('[OCR 메모]', json.notes);
+    } else {
+      showToast('📋 성분표를 찾지 못했어요. 성분표가 잘 보이게 다시 찍거나 직접 입력해주세요');
+    }
   }catch(e){
     console.error(e);
     if(st)st.style.display='none';
     showToast('📋 네트워크 오류, 직접 입력해주세요');
   }
 }
+let lastScanMeta=null;
 function parseNutritionText(raw){
   let t=raw.replace(/,/g,'').replace(/\r?\n/g,' ').replace(/\s+/g,' ');
   console.log('[파싱]',t);
@@ -1921,13 +1944,22 @@ async function sendChat(){
     }
     removeTyping();
     // 서버 오류 또는 빈 응답 → 차감 없이 재시도 제공
+    if(data.quotaExceeded){
+      applyServerQuota(data);
+      addChatMsg('ai', data.error || '오늘 상담 횟수를 모두 사용했어요.');
+      isSendingChat = false; inp.disabled = false;
+      setTimeout(checkPaywall, 400);
+      return;
+    }
     if(data.error || !data.reply){
       addChatRetryMsg(q, data.error || '잠시 후 다시 시도해 주세요. 🦄');
       isSendingChat = false; inp.disabled = false;
       return;
     }
-    // ★ 서버가 quotaDeducted: false를 반환한 경우(RED 차단·응급) 횟수 미차감
-    if (data.quotaDeducted !== false) {
+    // ★ 서버가 남은 횟수를 알려주면 그 값을 사용 (RED 차단·응급은 미차감)
+    if (typeof data.quotaLeft === 'number') {
+      applyServerQuota(data);
+    } else if (data.quotaDeducted !== false) {
       incQuota(); updateQuotaBadge();
     }
     addChatMsg('ai', data.reply);
