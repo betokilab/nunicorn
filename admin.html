@@ -248,7 +248,12 @@ async function doMagicLink() {
       email,
       options: { emailRedirectTo: location.origin + '/admin', shouldCreateUser: false },
     });
-    if (error) { errEl.textContent = '전송 실패: 등록된 관리자 이메일인지 확인하세요.'; return; }
+    if (error) {
+      errEl.textContent = (error.status === 429 || /rate limit/i.test(error.message||''))
+        ? '메일 발송 한도 초과예요. 약 1시간 뒤 다시 시도하거나 비밀번호로 로그인하세요.'
+        : '전송 실패: 등록된 관리자 이메일인지 확인하세요.';
+      return;
+    }
     errEl.style.color = '#2E7D32';
     errEl.textContent = '메일을 보냈어요. 받은편지함의 링크를 클릭하면 로그인됩니다.';
   } finally {

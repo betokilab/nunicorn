@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(admin): RED hold review queue (held/approve/reject) + vercel api subpath rewrite"
+git commit -m "fix(admin): clear message on email rate limit"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
