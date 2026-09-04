@@ -1,0 +1,48 @@
+deploy.ps1
+
+# 환경변수·비밀키
+.env
+.env.local
+.env.*.local
+*.secret
+secrets.json
+.keys
+
+# 배포 로그
+push_log.txt
+
+# 레거시 배포 스크립트 (PAT 포함 가능)
+check_and_push.bat
+push_index.bat
+do_push_auth.ps1
+push_auth_fix.ps1
+push_current.ps1
+push_favicons.ps1
+push_images.ps1
+push_migrate.ps1
+test_github.ps1
+uploader.html
+
+# 일회성 배포 헬퍼 (로컬 전용)
+nav_fix_push.bat
+push_only.bat
+push_to_main.bat
+push_fix_to_main.bat
+push_fix_v2.bat
+.fuse_hidden*
+last_sha.txt
+push_result.txt
+
+# 카드뉴스 원본·작업 파일 (배포 불필요)
+images/ChatGPT Image*.png
+images/Nunicorn_Logo_*_Transparent.png
+process_cony.py
+upload_to_github.py
+deploy_vercel.bat
+run_*.bat
+
+# 내부 운영 문서 (별도 결정 전까지 미배포)
+agency/
+admin_migration.sql
+admin_migration_v2.sql
+admin_migration_v3.sql

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="#FFB3A7"/>
+  <!-- Horn -->
+  <polygon points="32,6 28,22 36,22" fill="#FFEAA7" stroke="#F5C842" stroke-width="0.5"/>
+  <!-- Rainbow stripes on horn -->
+  <line x1="30" y1="10" x2="34.5" y2="18" stroke="#FF8C7A" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="29" y1="14" x2="33.5" y2="20" stroke="#88D8C0" stroke-width="1" stroke-linecap="round"/>
+  <!-- Ears -->
+  <ellipse cx="22" cy="26" rx="5" ry="7" fill="#FFF0EE" stroke="#FFB3A7" stroke-width="1"/>
+  <ellipse cx="22" cy="26" rx="3" ry="5" fill="#FFB3A7"/>
+  <ellipse cx="42" cy="26" rx="5" ry="7" fill="#FFF0EE" stroke="#FFB3A7" stroke-width="1"/>
+  <ellipse cx="42" cy="26" rx="3" ry="5" fill="#FFB3A7"/>
+  <!-- Head -->
+  <ellipse cx="32" cy="36" rx="16" ry="14" fill="#FFF0EE"/>
+  <!-- Eyes -->
+  <ellipse cx="26" cy="33" rx="2.5" ry="3" fill="#4A413D"/>
+  <ellipse cx="38" cy="33" rx="2.5" ry="3" fill="#4A413D"/>
+  <!-- Eye shine -->
+  <circle cx="27" cy="32" r="1" fill="white"/>
+  <circle cx="39" cy="32" r="1" fill="white"/>
+  <!-- Cheeks -->
+  <ellipse cx="21" cy="38" rx="4" ry="2.5" fill="#FFB3A7" opacity="0.6"/>
+  <ellipse cx="43" cy="38" rx="4" ry="2.5" fill="#FFB3A7" opacity="0.6"/>
+  <!-- Smile -->
+  <path d="M27 40 Q32 44 37 40" stroke="#4A413D" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- Mane -->
+  <path d="M16 30 Q10 36 14 44 Q18 50 24 48" stroke="#FF8C7A" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M16 30 Q8 38 13 47 Q17 52 24 50" stroke="#FFEAA7" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M16 30 Q9 40 14 49" stroke="#88D8C0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>

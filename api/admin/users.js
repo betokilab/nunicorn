@@ -94,7 +94,7 @@ async function getUserDetail(supaAdmin, userId) {
   // 아이 프로필
   const { data: children } = await supaAdmin
     .from('user_children')
-    .select('id, nickname, months, weight_kg, created_at')
+    .select('id, name, birthdate, gender, months, emoji, created_at')
     .eq('user_id', userId);
 
   // 최근 상담 5건

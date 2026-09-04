@@ -125,6 +125,7 @@ textarea{resize:vertical;min-height:80px;}
     <input type="email" id="li-email" placeholder="이메일" autocomplete="email">
     <input type="password" id="li-pw" placeholder="비밀번호" autocomplete="current-password">
     <button id="li-btn" onclick="doLogin()">로그인</button>
+    <button id="li-magic" onclick="doMagicLink()" style="background:#EEE;color:#444;margin-top:8px">📧 이메일로 로그인 링크 받기</button>
     <div id="li-err" class="login-err"></div>
   </div>
 </div>
@@ -164,8 +165,8 @@ textarea{resize:vertical;min-height:80px;}
 
 <script>
 // ── Supabase 클라이언트 (anon key — 인증만 사용) ─────────────────
-const SUPA_URL = 'https://oxrdienywxsooygxvqgf.supabase.co';
-const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94cmRpZW55d3hzb295Z3h2cWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzODgzNDMsImV4cCI6MjA5NTk2NDM0M30.rSpYrPX1H1BQetQdojMwO3SVBvFs9gfHhOPaUOo-eo8';
+const SUPA_URL = 'https://rccakcbjpaplrawvvliy.supabase.co';
+const SUPA_ANON = 'sb_publishable_UaNs9Wx4tX2wPcjvEPbgUA_PAoVLqe0';
 
 let supabase;
 let adminToken = null;
@@ -231,6 +232,26 @@ async function doLogin() {
     if (!adminToken) { errEl.textContent = '관리자 권한이 없는 계정입니다.'; }
   } finally {
     btn.disabled = false; btn.textContent = '로그인';
+  }
+}
+
+async function doMagicLink() {
+  const email = document.getElementById('li-email').value.trim();
+  const btn   = document.getElementById('li-magic');
+  const errEl = document.getElementById('li-err');
+  errEl.textContent = '';
+  if (!email) { errEl.textContent = '이메일을 입력하세요.'; return; }
+  btn.disabled = true; btn.textContent = '전송 중...';
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: location.origin + '/admin', shouldCreateUser: false },
+    });
+    if (error) { errEl.textContent = '전송 실패: 등록된 관리자 이메일인지 확인하세요.'; return; }
+    errEl.style.color = '#2E7D32';
+    errEl.textContent = '메일을 보냈어요. 받은편지함의 링크를 클릭하면 로그인됩니다.';
+  } finally {
+    btn.disabled = false; btn.textContent = '📧 이메일로 로그인 링크 받기';
   }
 }
 
@@ -1201,7 +1222,7 @@ async function openUserDetail(userId) {
     </div>
     <div class="sep"></div>
     <div class="card-title">아이 프로필 (${data.children?.length||0}명)</div>
-    ${data.children?.map(c => `<div style="font-size:13px;padding:4px 0">${esc(c.nickname||'이름없음')} · ${c.months}개월 · ${c.weight_kg||'-'}kg</div>`).join('') || '<div style="color:#AAA;font-size:13px">없음</div>'}
+    ${data.children?.map(c => `<div style="font-size:13px;padding:4px 0">${esc(c.emoji||'👶')} ${esc(c.name||'이름없음')} · ${c.months ?? '-'}개월${c.gender ? ' · '+esc(c.gender) : ''}${c.birthdate ? ' · '+esc(c.birthdate) : ''}</div>`).join('') || '<div style="color:#AAA;font-size:13px">없음</div>'}
     <div class="sep"></div>
     <div class="card-title">쿼터 조정</div>
     <div class="form-row">
