@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat: combined regimen judgment - supplements store nutrients, result sums existing+new vs UL, home daily totals, chat regimen context"
+git commit -m "fix: analyzeNutrients crashed for logged-in users (PostgrestBuilder has no .catch)"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

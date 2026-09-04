@@ -1831,7 +1831,7 @@ function analyzeNutrients(){
   logA('scan',{name,inputs});
   // 로그인 상태면 scan_history에도 실시간 저장
   if (supa && supaUser) {
-    supa.from('scan_history').insert({
+    Promise.resolve(supa.from('scan_history').insert({
       user_id:       supaUser.id,
       product_name:  name,
       age_label:     ref.label,
@@ -1839,7 +1839,7 @@ function analyzeNutrients(){
       inputs:        inputs,
       timing:        lastResult.timing,
       scanned_at:    new Date().toISOString()
-    }).catch(e => console.warn('scan_history:', e));
+    })).then(r => { if (r?.error) console.warn('scan_history:', r.error); }).catch(e => console.warn('scan_history:', e));
   }
   renderResult(name,inputs,ref);showScreen('result');
 }
