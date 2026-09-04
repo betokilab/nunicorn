@@ -1,6 +1,17 @@
 export const config = { runtime: 'edge' };
 
-const SYSTEM_PROMPT = `당신은 '코니'입니다. 뉴니콘 앱의 영유아·키즈 영양제 전문 AI 상담사예요.
+import {
+  RED_PATTERNS,
+  YELLOW_PATTERNS,
+  EMERGENCY_KEYWORDS,
+  EMERGENCY_RESPONSE,
+  RED_SAFE_MESSAGE,
+  DISCLAIMER_YELLOW,
+  DISCLAIMER_MARKERS,
+  SYSTEM_PROMPT_POLICY_ADDON,
+} from './prompt-policy.js';
+
+const BASE_SYSTEM_PROMPT = `당신은 '코니'입니다. 뉴니콘 앱의 영유아·키즈 영양제 전문 AI 상담사예요.
 한국인 영양소 섭취기준(KDRIs)을 기반으로 0~12세 아이의 영양제에 대해 친절하고 정확하게 안내합니다.
 
 답변 원칙:
@@ -11,6 +22,34 @@ const SYSTEM_PROMPT = `당신은 '코니'입니다. 뉴니콘 앱의 영유아·
 - 이모지 1~2개 자연스럽게 활용
 - 근거가 불명확한 경우 단정하지 않고 "전문가 확인을 권해요"로 표현
 - 의학적 진단, 질병 치료, 개별 처방처럼 표현하지 않기`;
+
+const SYSTEM_PROMPT = BASE_SYSTEM_PROMPT + SYSTEM_PROMPT_POLICY_ADDON;
+
+// ── GREEN / YELLOW / RED 판정 (tests/chat-eval.test.js와 로직 동일 유지) ──
+const CAUTION_QUESTION_KEYWORDS = ['상한량', '처방약', '항생제', '진단', '알레르기', '과민반응', '부작용'];
+
+function evaluateGreenYellowRed(question, answer) {
+  const text = answer || '';
+  for (const { re, reason } of RED_PATTERNS) {
+    if (re.test(text)) return { grade: 'red', reason };
+  }
+  for (const re of YELLOW_PATTERNS) {
+    if (re.test(text)) return { grade: 'yellow', reason: null };
+  }
+  if (CAUTION_QUESTION_KEYWORDS.some(k => question.includes(k))) {
+    return { grade: 'yellow', reason: null };
+  }
+  return { grade: 'green', reason: null };
+}
+
+function appendDisclaimerIfNeeded(answer) {
+  const hasMarker = DISCLAIMER_MARKERS.some(m => answer.includes(m));
+  return hasMarker ? answer : answer + DISCLAIMER_YELLOW;
+}
+
+function isEmergency(text) {
+  return EMERGENCY_KEYWORDS.some(k => text.includes(k));
+}
 
 const USER_FRIENDLY_ERROR = '지금은 상담 연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.';
 
@@ -43,6 +82,7 @@ async function logChat({
   status, errorCode, riskLevel, riskFlags,
   childAgeLabel, childMonths, disclaimerShown, quotaDeducted,
   supplements,
+  evalGrade, evalReason, heldForReview, redReviewStatus,
 }) {
   const supaUrl = process.env.SUPA_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -63,6 +103,10 @@ async function logChat({
       quota_deducted: quotaDeducted ?? false,
       supplements_context: supplements || null,
       user_agent: userAgent?.slice(0, 200) || null,
+      ...(evalGrade       !== undefined && { eval_grade: evalGrade }),
+      ...(evalReason      !== undefined && { eval_reason: evalReason }),
+      ...(heldForReview   !== undefined && { held_for_review: heldForReview }),
+      ...(redReviewStatus !== undefined && { red_review_status: redReviewStatus }),
     };
 
     await fetch(`${supaUrl}/rest/v1/chat_logs`, {
@@ -140,6 +184,21 @@ export default async function handler(req) {
   // 위험 키워드 사전 분류
   const questionRisk = classifyRisk(message);
 
+  // 응급 키워드 → AI 호출 없이 즉시 응급 안내 (횟수 미차감)
+  if (isEmergency(message)) {
+    await logChat({
+      userId, userAgent, question: message.trim(), answer: EMERGENCY_RESPONSE,
+      status: 'success', errorCode: null,
+      riskLevel: 'high', riskFlags: [...new Set(['emergency', ...questionRisk.flags])],
+      childAgeLabel: childAge, childMonths, disclaimerShown,
+      quotaDeducted: false, supplements: supList,
+      evalGrade: 'green', evalReason: 'emergency_shortcut',
+    });
+    return new Response(JSON.stringify({ reply: EMERGENCY_RESPONSE, evalGrade: 'emergency', quotaDeducted: false }), {
+      status: 200, headers: corsHeaders
+    });
+  }
+
   // 30초 timeout 적용
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -212,16 +271,40 @@ export default async function handler(req) {
         : 'normal';
     const finalRiskFlags = [...new Set([...questionRisk.flags, ...answerRisk.flags])];
 
+    // GREEN / YELLOW / RED 판정
+    const evaluation = evaluateGreenYellowRed(message, reply);
+
+    // RED → 원문 차단, 관리자 승인 대기 큐에 저장, 횟수 미차감
+    if (evaluation.grade === 'red') {
+      await logChat({
+        userId, userAgent, question: message.trim(), answer: reply,
+        status: 'success', errorCode: null,
+        riskLevel: finalRiskLevel === 'normal' ? 'caution' : finalRiskLevel,
+        riskFlags: finalRiskFlags,
+        childAgeLabel: childAge, childMonths, disclaimerShown,
+        quotaDeducted: false, supplements: supList,
+        evalGrade: 'red', evalReason: evaluation.reason,
+        heldForReview: true, redReviewStatus: 'pending',
+      });
+      return new Response(JSON.stringify({ reply: RED_SAFE_MESSAGE, evalGrade: 'red', quotaDeducted: false }), {
+        status: 200, headers: corsHeaders
+      });
+    }
+
+    // YELLOW → 면책 문구 자동 추가
+    const finalReply = evaluation.grade === 'yellow' ? appendDisclaimerIfNeeded(reply) : reply;
+
     // 성공 로깅 (쿼터 차감됨)
     await logChat({
-      userId, userAgent, question: message.trim(), answer: reply,
+      userId, userAgent, question: message.trim(), answer: finalReply,
       status: 'success', errorCode: null,
       riskLevel: finalRiskLevel, riskFlags: finalRiskFlags,
       childAgeLabel: childAge, childMonths, disclaimerShown,
       quotaDeducted: true, supplements: supList,
+      evalGrade: evaluation.grade, heldForReview: false,
     });
 
-    return new Response(JSON.stringify({ reply }), {
+    return new Response(JSON.stringify({ reply: finalReply, evalGrade: evaluation.grade, quotaDeducted: true }), {
       status: 200, headers: corsHeaders
     });
 

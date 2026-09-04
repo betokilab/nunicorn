@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix(chat): await logChat so edge runtime does not drop chat_logs insert"
+git commit -m "feat(chat): wire prompt-policy - emergency shortcut, GREEN/YELLOW/RED eval, RED hold queue"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
