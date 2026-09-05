@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(mobile): responsive pass - landscape/short screens, iOS input zoom, onboarding scroll, sum list, safe-area calc fix"
+git commit -m "fix(seo): multi-size favicon.ico + shortcut icon link for Naver/Google"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
