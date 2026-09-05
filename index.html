@@ -2379,55 +2379,137 @@ function renderSchedule(){
 // ===== INSIGHTS =====
 function renderInsights(){
   const body=document.getElementById('insights-body');
-  const a=getA();const total=a.scans.length;
-  if(!total){
-    body.innerHTML=`<div style="padding:16px;"><div class="cony-row"><div class="cavatar"><img src="/images/cony-face.png" class="cony-img" style="width:100%;height:100%;object-fit:contain;"></div><div class="bubble" style="font-size:12px;">아직 데이터가 없어요!<br>라벨 스캔을 하면 여기에 패턴이 쌓여요 📊</div></div><div style="text-align:center;padding:30px 0;"><img src="/images/cony-read.png" class="cony-img" style="width:72px;height:72px;margin:0 auto 10px;"><p style="font-size:13px;color:var(--text-sub);">스캔할수록 인사이트가 쌓여요!</p></div><button class="btn-p" onclick="showScreen('scan')" style="margin-top:8px;">📸 라벨 스캔하러 가기</button></div>`;
+  const a=getA(); const total=a.scans.length;
+  const ref=getRef(); const em=getEffectiveMonths();
+  const active=S.supplements.filter(x=>(!x.status||x.status==='active'));
+  const withN=active.filter(x=>x.nutrients&&Object.keys(x.nutrients).length);
+  const totals=dailyTotals();
+  const name=S.profile.name||'우리 아이';
+
+  // ── 복용 순응도 (최근 30일) ──
+  const days=[]; for(let i=0;i<30;i++){const d=new Date(Date.now()-i*86400000);days.push(d.toISOString().slice(0,10));}
+  const activeIds=active.map(x=>x.id);
+  let checked=0, possible=0, daysWithAny=0;
+  days.forEach(d=>{const log=S.dailyLog[d]||{}; let any=false; activeIds.forEach(id=>{possible++; if(log[id]){checked++;any=true;}}); if(any)daysWithAny++;});
+  const adherence=possible?Math.round(checked/possible*100):null;
+  const perSupp=active.map(x=>{let c=0,p=0;days.slice(0,14).forEach(d=>{p++; if(S.dailyLog[d]?.[x.id])c++;});return {name:x.name,emoji:x.emoji,rate:Math.round(c/p*100)};}).sort((a,b)=>a.rate-b.rate);
+
+  // ── 합산 vs 권장/상한 ──
+  const rows=Object.keys(totals).filter(k=>NUT[k]).map(k=>{
+    const v=totals[k], rni=ref[k]||null, ul=getAgeUL(k,em);
+    return {k,v,rni,ul,rniR:rni?v/rni:null,ulR:ul?v/ul:null};
+  }).sort((a,b)=>(b.ulR??-1)-(a.ulR??-1));
+  const overs=rows.filter(r=>r.ul&&r.v>r.ul), nears=rows.filter(r=>r.ul&&r.ulR>=0.8&&r.v<=r.ul), lows=rows.filter(r=>r.rni&&r.rniR<0.5);
+
+  if(!active.length && !total){
+    body.innerHTML=`<div style="padding:16px;"><div class="cony-row"><div class="cavatar"><img src="/images/cony-face.png" class="cony-img" style="width:100%;height:100%;object-fit:contain;"></div><div class="bubble" style="font-size:12px;">아직 데이터가 없어요!<br>라벨을 스캔해 영양제를 등록하면 여기에 합산 리포트가 만들어져요 📊</div></div><div style="text-align:center;padding:30px 0;"><img src="/images/cony-read.png" class="cony-img" style="width:72px;height:72px;margin:0 auto 10px;"><p style="font-size:13px;color:var(--text-sub);">스캔할수록 리포트가 정확해져요!</p></div><button class="btn-p" onclick="showScreen('scan')" style="margin-top:8px;">📸 라벨 스캔하러 가기</button></div>`;
     return;
   }
-  const defTop=Object.entries(a.deficiencies).sort((x,y)=>y[1]-x[1]).slice(0,3);
-  const ageTop=Object.entries(a.ageGroups).sort((x,y)=>y[1]-x[1]);
-  const maxA=ageTop[0]?.[1]||1;
+
+  const headline = overs.length ? `⚠️ ${overs.map(r=>NUT[r.k].l).join(', ')}이(가) 상한을 넘고 있어요` : nears.length ? `🟡 ${nears.map(r=>NUT[r.k].l).join(', ')}이(가) 상한에 가까워요` : rows.length ? `✅ 등록된 영양제 합산은 모두 상한 이내예요` : `등록된 영양제에 성분 정보를 채우면 합산 리포트가 만들어져요`;
   let html=`<div style="padding:16px;">
-    <div class="cony-row"><div class="cavatar"><img src="/images/cony-face.png" class="cony-img" style="width:100%;height:100%;object-fit:contain;"></div><div class="bubble" style="font-size:12px;">총 <b>${total}번</b> 스캔! 패턴을 분석해봤어요 📊</div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;">
-      <div style="background:var(--primary-light);border-radius:var(--radius-sm);padding:12px;text-align:center;"><p style="font-size:10px;color:var(--primary-dark);font-weight:700;margin-bottom:3px;">총 스캔</p><p style="font-size:26px;font-weight:900;color:var(--primary-dark);">${total}</p></div>
-      <div style="background:var(--mint-light);border-radius:var(--radius-sm);padding:12px;text-align:center;"><p style="font-size:10px;color:#2E9E84;font-weight:700;margin-bottom:3px;">등록 영양제</p><p style="font-size:26px;font-weight:900;color:#2E9E84;">${S.supplements.length}</p></div>
+    <div class="cony-row"><div class="cavatar"><img src="/images/cony-face.png" class="cony-img" style="width:100%;height:100%;object-fit:contain;"></div><div class="bubble" style="font-size:12px;">${name}(${ref.label}) 리포트예요.<br>${headline}</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+      <div style="background:var(--primary-light);border-radius:var(--radius-sm);padding:10px 6px;text-align:center;"><p style="font-size:10px;color:var(--primary-dark);font-weight:700;margin-bottom:3px;">등록 영양제</p><p style="font-size:20px;font-weight:900;color:var(--primary-dark);">${active.length}</p><p style="font-size:9px;color:var(--primary-dark);">성분 등록 ${withN.length}</p></div>
+      <div style="background:var(--mint-light);border-radius:var(--radius-sm);padding:10px 6px;text-align:center;"><p style="font-size:10px;color:#2E9E84;font-weight:700;margin-bottom:3px;">30일 복용률</p><p style="font-size:20px;font-weight:900;color:#2E9E84;">${adherence==null?'-':adherence+'%'}</p><p style="font-size:9px;color:#2E9E84;">체크한 날 ${daysWithAny}일</p></div>
+      <div style="background:var(--yellow-light);border-radius:var(--radius-sm);padding:10px 6px;text-align:center;"><p style="font-size:10px;color:#B8860B;font-weight:700;margin-bottom:3px;">라벨 분석</p><p style="font-size:20px;font-weight:900;color:#B8860B;">${total}</p><p style="font-size:9px;color:#B8860B;">누적 횟수</p></div>
     </div>`;
-  if(defTop.length){
-    html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">📊 자주 권장량보다 적게 보충된 영양소</p><div class="card" style="padding:13px;">`;
-    defTop.forEach(([k,cnt])=>{
-      const n=NUT[k];if(!n)return;const p=Math.round(cnt/total*100);
-      html+=`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:12px;font-weight:700;">${n.e} ${n.l}</span><span style="font-size:11px;color:#C8920A;font-weight:700;">${cnt}회 (${p}%)</span></div><div class="pbar"><div class="pbar-f" style="width:${p}%;background:#F3D68A;"></div></div></div>`;
+
+  // 합산 표
+  if(rows.length){
+    html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">🧮 영양제 합산 1일 보충량 <span style="font-weight:400;color:var(--text-hint);">(${ref.label} 기준 · 음식 제외)</span></p><div class="card" style="padding:13px;">`;
+    rows.forEach(r=>{
+      const n=NUT[r.k];
+      const ulPct=r.ul?Math.min(100,Math.round(r.ulR*100)):null;
+      const color=r.ul&&r.v>r.ul?'#C0392B':r.ul&&r.ulR>=0.8?'#E0B000':'#2E9E84';
+      const rniTxt=r.rni?`권장 ${fmtAmt(r.k,r.rni)} · <b style="color:${r.rniR>=1?'#2E9E84':'var(--text-sub)'}">${Math.round(r.rniR*100)}%</b>`:'권장 기준 없음';
+      const ulTxt=r.ul?`상한 ${fmtAmt(r.k,r.ul)} · <b style="color:${color}">${Math.round(r.ulR*100)}%</b>`:'상한 없음';
+      html+=`<div style="margin-bottom:11px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;"><span style="font-size:12px;font-weight:700;">${n.e} ${n.l}</span><span style="font-size:12px;font-weight:800;color:${color};">${fmtAmt(r.k,r.v)}</span></div>
+        <div style="height:7px;background:#EEE;border-radius:4px;overflow:hidden;position:relative;">${r.ul?`<div style="width:${ulPct}%;height:100%;background:${color};"></div>${r.rni?`<div style="position:absolute;top:-2px;left:${Math.min(100,Math.round(r.rni/r.ul*100))}%;width:2px;height:11px;background:#7B6DBB;" title="권장량"></div>`:''}`:`<div style="width:${r.rni?Math.min(100,Math.round(r.rniR*100)):0}%;height:100%;background:#B09FE8;"></div>`}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:10px;color:var(--text-sub);"><span>${rniTxt}</span><span>${ulTxt}</span></div>
+      </div>`;
     });
+    html+=`<p style="font-size:10px;color:var(--text-hint);margin-top:2px;">막대 = 상한 대비 · 보라 선 = 권장량 위치. 권장량 미만이라도 음식으로 충분히 섭취할 수 있어 "부족"을 뜻하지 않아요.</p></div>`;
+  }
+  if(active.length && active.length>withN.length){
+    const miss=active.filter(x=>!x.nutrients||!Object.keys(x.nutrients).length);
+    html+=`<div class="card" style="padding:11px 13px;border-left:4px solid #E8E8E8;"><p style="font-size:11px;color:var(--text-sub);line-height:1.6;">📋 <b>${miss.map(m=>m.name).join(', ')}</b>은 성분 정보가 없어 합산에서 빠졌어요. 라벨을 스캔하거나 제품명 검색으로 성분을 채워 주세요.</p></div>`;
+  }
+
+  // 복용 순응도
+  if(active.length){
+    html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin:12px 0 8px;">✅ 최근 14일 복용 체크율</p><div class="card" style="padding:13px;">`;
+    perSupp.forEach(x=>{
+      const c=x.rate>=80?'#2E9E84':x.rate>=50?'#E0B000':'#C0392B';
+      html+=`<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;">${x.emoji||'💊'} ${x.name}</span><span style="font-size:11px;font-weight:700;color:${c};">${x.rate}%</span></div><div style="height:5px;background:#EEE;border-radius:3px;overflow:hidden;"><div style="width:${x.rate}%;height:100%;background:${c};"></div></div></div>`;
+    });
+    html+=`<p style="font-size:10px;color:var(--text-hint);">홈 화면에서 매일 체크한 기록 기준이에요. 체크를 안 하면 낮게 나와요.</p></div>`;
+  }
+
+  // 소아과 상담용 요약
+  html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin:12px 0 8px;">🏥 소아과 상담용 요약</p>
+    <div class="card" style="padding:13px;">
+      <p style="font-size:11px;color:var(--text-sub);line-height:1.6;margin-bottom:8px;">진료 때 이 요약을 보여주면 어떤 영양제를 얼마나 먹이는지 한눈에 전달할 수 있어요.</p>
+      <pre id="doctor-summary" style="white-space:pre-wrap;font-family:inherit;font-size:11px;line-height:1.6;background:var(--bg);border-radius:10px;padding:10px;color:var(--text);max-height:220px;overflow:auto;">${escapeHtml(buildDoctorSummary(rows,active,adherence))}</pre>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn-p" style="flex:1;padding:11px;" onclick="copyDoctorSummary()">📋 복사</button>
+        ${navigator.share?`<button class="btn-p" style="flex:1;padding:11px;background:var(--mint-light);color:#2E9E84;" onclick="shareDoctorSummary()">📤 공유</button>`:''}
+      </div>
+    </div>`;
+
+  // 기존 스캔 통계 (부가)
+  const defTop=Object.entries(a.deficiencies).sort((x,y)=>y[1]-x[1]).slice(0,3);
+  if(total>=3 && defTop.length){
+    html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin:12px 0 8px;">📊 분석한 제품에서 자주 권장량보다 적었던 성분</p><div class="card" style="padding:13px;">`;
+    defTop.forEach(([k,cnt])=>{const n=NUT[k];if(!n)return;const p=Math.round(cnt/total*100);
+      html+=`<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;">${n.e} ${n.l}</span><span style="font-size:11px;color:var(--text-sub);">${cnt}/${total}회</span></div><div style="height:5px;background:#EEE;border-radius:3px;overflow:hidden;"><div style="width:${p}%;height:100%;background:#B09FE8;"></div></div></div>`;});
     html+='</div>';
   }
-  if(ageTop.length){
-    html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">👶 나이별 분석 현황</p><div class="card" style="padding:13px;">`;
-    ageTop.forEach(([label,cnt])=>{
-      const p=Math.round(cnt/maxA*100);
-      html+=`<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;">${label}</span><span style="font-size:11px;color:var(--primary-dark);font-weight:700;">${cnt}회</span></div><div class="pbar"><div class="pbar-f" style="width:${p}%;background:var(--primary);"></div></div></div>`;
-    });
-    html+='</div>';
-  }
-  const topDef=defTop[0]?.[0];const topName=topDef?NUT[topDef]?.l:'';
-  html+=`<div style="background:var(--primary-light);border-radius:var(--radius-sm);padding:13px;margin-top:4px;">
-    <p style="font-size:12px;font-weight:800;color:var(--primary-dark);margin-bottom:5px;">🦄 코니의 총평</p>
-    <p style="font-size:11px;color:var(--primary-dark);line-height:1.6;">${
-      topName
-        ? (S.profile.name||'우리 아이')+'의 영양제에서 권장량 대비 보충 비율이 낮은 영양소는 <b>'+topName+'</b>이에요. 음식 섭취량이 포함되지 않은 수치예요. 💜'
-        : total===1
-          ? '첫 번째 영양 분석을 완료했어요! 앞으로도 함께 확인해봐요 🎉'
-          : total===2
-            ? '영양 상태를 한 번 더 확인했어요. 꾸준히 관찰하면 패턴을 알 수 있어요 💜'
-            : '꾸준히 영양 상태를 확인하고 있어요. 훌륭해요! 🎉'
-    }</p>
+
+  html+=`<div style="background:var(--bg-secondary,#F5F5F5);border-radius:10px;padding:10px 14px;margin-top:12px;margin-bottom:4px;">
+    <p style="font-size:10px;color:var(--text-hint,#C9C0BC);line-height:1.6;text-align:center;">📋 기준: 보건복지부·한국영양학회 「2025 한국인 영양소 섭취기준(KDRIs)」 · 영양제 라벨 함량만 합산, 음식 섭취량 미포함<br>⚠️ 참고용 정보이며 진단·처방이 아니에요. 상한 초과나 건강 이상이 있으면 소아과 전문의와 상담하세요.</p>
   </div>
-  <div style="background:var(--bg-secondary,#F5F5F5);border-radius:10px;padding:10px 14px;margin-top:8px;margin-bottom:4px;">
-    <p style="font-size:10px;color:var(--text-hint,#C9C0BC);line-height:1.6;text-align:center;">📋 본 데이터는 <b>보건복지부·한국영양학회</b><br>「한국인 영양소 섭취기준(KDRIs)」을 따릅니다 · 음식 섭취량 미포함</p>
-  </div>
-  <button class="btn-p" onclick="showScreen('scan')" style="margin-top:8px;margin-bottom:8px;">📸 오늘도 스캔하기</button>
+  <button class="btn-p" onclick="showScreen('scan')" style="margin-top:8px;margin-bottom:8px;">📸 라벨 스캔하기</button>
   </div>`;
   body.innerHTML=html;
+}
+function buildDoctorSummary(rows,active,adherence){
+  const ref=getRef(); const em=getEffectiveMonths();
+  const F={breast:'모유',formula:'분유',mixed:'혼합 수유',solid:'이유식 병행',regular:'일반식'};
+  const lines=[];
+  lines.push(`[뉴니콘 영양제 복용 요약] ${new Date().toLocaleDateString('ko-KR')}`);
+  lines.push(`아이: ${S.profile.name||'아이'} · ${em}개월 (${ref.label})${S.profile.feeding&&F[S.profile.feeding]?' · '+F[S.profile.feeding]:''}${S.profile.weight?' · '+S.profile.weight+'kg':''}`);
+  lines.push('');
+  lines.push('■ 복용 중인 영양제');
+  if(!active.length) lines.push('  (등록된 영양제 없음)');
+  active.forEach(x=>{
+    const n=x.nutrients?Object.entries(x.nutrients).filter(([k])=>NUT[k]).map(([k,v])=>NUT[k].l+' '+fmtAmt(k,v)).join(', '):'성분 미등록';
+    lines.push(`  - ${x.name} · ${x.timing||''} · 1일 ${x.dailyServings||1}회${x.frequency==='alternate'?'(격일)':''}${x.servingSize?' · 1회 '+x.servingSize+(x.servingUnit||''):''}`);
+    lines.push(`    ${n}`);
+  });
+  if(rows.length){
+    lines.push('');
+    lines.push('■ 1일 합산 보충량 (라벨 기준, 음식 제외)');
+    rows.forEach(r=>{
+      const flag=r.ul&&r.v>r.ul?' ⚠ 상한 초과':r.ul&&r.ulR>=0.8?' △ 상한 근접':'';
+      lines.push(`  - ${NUT[r.k].l}: ${fmtAmt(r.k,r.v)}${r.rni?' (권장 '+fmtAmt(r.k,r.rni)+')':''}${r.ul?' (상한 '+fmtAmt(r.k,r.ul)+')':''}${flag}`);
+    });
+  }
+  if(adherence!=null){ lines.push(''); lines.push(`■ 최근 30일 복용 체크율: ${adherence}%`); }
+  lines.push('');
+  lines.push('※ 기준: 2025 한국인 영양소 섭취기준(KDRIs). 참고용 자료이며 진단·처방이 아닙니다.');
+  return lines.join('\n');
+}
+async function copyDoctorSummary(){
+  const t=document.getElementById('doctor-summary')?.innerText||'';
+  try{ await navigator.clipboard.writeText(t); showToast('📋 복사했어요. 메모장이나 메시지에 붙여넣으세요'); }
+  catch{ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); showToast('📋 복사했어요'); }
+  logA('doctor_summary_copy',{});
+}
+async function shareDoctorSummary(){
+  const t=document.getElementById('doctor-summary')?.innerText||'';
+  try{ await navigator.share({title:'뉴니콘 영양제 복용 요약', text:t}); }catch{}
 }
 
 // ===== PROFILE =====

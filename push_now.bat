@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "chore: update image-transfer notice and privacy policy for server-side vision OCR"
+git commit -m "feat: nutrition report rebuilt - regimen totals vs RNI/UL, 30-day adherence, pediatrician summary copy/share"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
