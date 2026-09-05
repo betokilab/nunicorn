@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix(report): adherence denominators start at supplement creation date"
+git commit -m "feat(mobile): responsive pass - landscape/short screens, iOS input zoom, onboarding scroll, sum list, safe-area calc fix"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

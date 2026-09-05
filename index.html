@@ -57,6 +57,7 @@
 <style>
 :root{--primary:#F3A59B;--primary-dark:#E8847A;--primary-light:#FEF2F1;--mint:#C8E1D4;--mint-light:#EBF6F2;--yellow:#F3D68A;--yellow-light:#FBF7E8;--bg:#FFF9F4;--card:#FFFFFF;--text:#62534D;--text-sub:#9A8F8B;--text-hint:#C9C0BC;--ok-bg:#EBF6F2;--warn-bg:#FBF7E8;--bad:#E8847A;--bad-bg:#FEF2F1;--radius:22px;--radius-sm:14px;--shadow:0 4px 20px rgba(98,83,77,0.08);--shadow-sm:0 2px 12px rgba(98,83,77,0.06);--shadow-p:0 6px 24px rgba(243,165,155,0.35);}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
 html,body{height:100%;background:#FFF9F4;font-family:-apple-system,'Pretendard','Apple SD Gothic Neo',sans-serif;}
 
 /* 뉴니콘 코니 캐릭터 이미지 공통 스타일 */
@@ -76,14 +77,18 @@ html,body{height:100%;background:#FFF9F4;font-family:-apple-system,'Pretendard',
 .pc-feat h3{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
 .pc-feat p{font-size:12px;color:var(--text-sub);line-height:1.4;margin-bottom:0;}
 
-.app-shell{width:390px;height:844px;flex-shrink:0;position:relative;overflow:hidden;background:var(--bg);box-shadow:0 24px 64px rgba(98,83,77,0.2);border-radius:44px;}
+.app-shell{width:390px;height:844px;max-height:calc(100vh - 48px);flex-shrink:0;position:relative;overflow:hidden;background:var(--bg);box-shadow:0 24px 64px rgba(98,83,77,0.2);border-radius:44px;}
+/* PC/태블릿에서 창이 낮으면 폰 프레임을 화면에 맞게 줄임 */
+@media(min-width:769px) and (max-height:900px){.app-shell{height:calc(100vh - 48px);border-radius:32px;}}
 
-/* 모바일 화면 완벽 대응 (화면 붕 뜨는 현상 제거) */
-@media(max-width:768px){
+/* 모바일 화면 완벽 대응 (화면 붕 뜨는 현상 제거)
+   - 세로 폰(≤768px) + 가로 폰(높이 ≤ 500px)은 모두 전체화면 */
+@media(max-width:768px),(max-height:500px){
   .pc-wrapper{padding:0;display:block;height:100%;min-height:100%;}
   .pc-side{display:none;}
   .app-shell{
     width:100%;
+    max-height:none;
     height:100vh; /* 기본 높이 */
     height:100dvh; /* 브라우저 주소창 변화에 실시간 대응 */
     border-radius:0;
@@ -92,6 +97,53 @@ html,body{height:100%;background:#FFF9F4;font-family:-apple-system,'Pretendard',
     top:0; left:0;
   }
   body{background:var(--bg);}
+  /* iOS: 16px 미만 입력창 포커스 시 자동 확대 → 화면이 틀어지는 현상 방지 */
+  input[type=text],input[type=number],input[type=email],select,textarea,.chat-input{font-size:16px !important;}
+}
+
+/* 큰 폰(≥430px): 본문이 너무 넓게 퍼지지 않도록 안쪽 여백만 살짝 확대 */
+@media(min-width:430px) and (max-width:768px){
+  .scroll-body{padding:18px 22px;}
+  .hbar{padding-left:24px;padding-right:24px;}
+}
+
+/* 작은 폰(≤360px): 여백·글자 소폭 축소 */
+@media(max-width:360px){
+  .scroll-body{padding:14px 12px;}
+  .hbar{padding-left:14px;padding-right:14px;}
+  .card{padding:13px;}
+  .htitle{font-size:16px;}
+  .ni-icon{font-size:18px;}
+  .ni-label{font-size:8.5px;letter-spacing:-0.2px;}
+  .age-grid{gap:5px;}
+  .bubble{font-size:12.5px;padding:10px 12px;}
+}
+.ni-label{white-space:nowrap;}
+
+/* 합산 판정 목록 (표 대신 행 카드 — 좁은 화면에서도 줄바꿈 자연스럽게) */
+.sum-row{padding:7px 0;border-top:1px solid var(--divider);}
+.sum-row:first-child{border-top:none;padding-top:2px;}
+.sum-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;}
+.sum-name{font-size:12px;font-weight:700;color:var(--text);}
+.sum-nums{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10.5px;color:var(--text-hint);}
+.sum-nums b{color:var(--text-sub);font-weight:700;}
+.sum-total{font-weight:800;}
+.sum-total small{font-size:10px;font-weight:500;color:var(--text-hint);}
+
+/* 온보딩 첫 화면: 낮은 화면(≤700px 높이)에서는 스크롤 허용 + 요소 축소 */
+.ob-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 24px) 28px 0;position:relative;text-align:center;min-height:0;}
+@media(max-height:700px){
+  .ob-body{justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:calc(env(safe-area-inset-top) + 56px);padding-bottom:12px;}
+  .ob-body .ob-cony{width:76px !important;height:76px !important;}
+  .ob-body h1{font-size:24px !important;margin-bottom:8px !important;}
+  .ob-body .ob-sub{margin-bottom:16px !important;}
+  .ob-body .ob-feats{gap:8px !important;margin-bottom:12px !important;}
+  .ob-body .ob-feats>div{padding:9px 14px !important;}
+  .ob-cta button{padding:14px !important;font-size:16px !important;}
+}
+@media(max-width:340px){
+  .ob-body{padding-left:18px;padding-right:18px;}
+  .ob-body h1{font-size:24px !important;}
 }
 
 .screen{display:none;flex-direction:column;position:absolute;inset:0;overflow:hidden;background:var(--bg);}
@@ -272,11 +324,11 @@ button.ni { background:none; border:none; font-family:inherit; }
   <div class="ob-deco" style="width:120px;height:120px;background:#C8E1D4;bottom:120px;left:-30px;"></div>
   <div class="ob-deco" style="width:80px;height:80px;background:#C8B7EE;top:30%;right:-20px;"></div>
 
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top)+24px) 28px 0;position:relative;text-align:center;">
+  <div class="ob-body">
 
     <!-- 코니 캐릭터 -->
-    <div style="position:relative;margin-bottom:14px;">
-      <img src="/images/cony-face.png" class="cony-img" style="width:100px;height:100px;filter:drop-shadow(0 8px 20px rgba(243,165,155,0.35));animation:floatCony 3s ease-in-out infinite;">
+    <div style="position:relative;margin-bottom:14px;flex-shrink:0;">
+      <img src="/images/cony-face.png" class="cony-img ob-cony" style="width:100px;height:100px;filter:drop-shadow(0 8px 20px rgba(243,165,155,0.35));animation:floatCony 3s ease-in-out infinite;">
       <!-- 말풍선 -->
       <div style="position:absolute;top:-10px;right:-70px;background:white;border-radius:14px 14px 14px 3px;padding:7px 11px;box-shadow:0 4px 14px rgba(98,83,77,0.12);white-space:nowrap;">
         <p style="font-size:11px;font-weight:700;color:#62534D;margin:0;">안녕! 나는 코니야 🦄</p>
@@ -287,10 +339,10 @@ button.ni { background:none; border:none; font-family:inherit; }
     <h1 style="font-size:28px;font-weight:900;color:#62534D;line-height:1.25;margin:0 0 10px;letter-spacing:-0.5px;">
       우리 아이 영양제<br><span style="background:linear-gradient(90deg,#E8847A,#C8B7EE);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">코니가 딱 맞게</span><br>분석해줄게요
     </h1>
-    <p style="font-size:13px;color:#9A8F8B;margin:0 0 24px;line-height:1.6;">영양성분 라벨을 사진으로 찍으면<br>월령에 맞게 이해하기 쉽게 분석해드려요 ✨</p>
+    <p class="ob-sub" style="font-size:13px;color:#9A8F8B;margin:0 0 24px;line-height:1.6;">영양성분 라벨을 사진으로 찍으면<br>월령에 맞게 이해하기 쉽게 분석해드려요 ✨</p>
 
     <!-- 가치 3가지 -->
-    <div style="width:100%;max-width:310px;display:flex;flex-direction:column;gap:10px;margin-bottom:28px;">
+    <div class="ob-feats" style="width:100%;max-width:310px;display:flex;flex-direction:column;gap:10px;margin-bottom:28px;flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:12px;background:white;border-radius:16px;padding:12px 16px;box-shadow:0 2px 12px rgba(98,83,77,0.07);">
         <div style="width:38px;height:38px;background:#FEF2F1;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📸</div>
         <div style="text-align:left;"><p style="font-size:13px;font-weight:800;color:#62534D;margin:0;">영양성분 라벨 촬영</p><p style="font-size:11px;color:#9A8F8B;margin:2px 0 0;">OCR 인식 시도 후 직접 확인·수정 가능</p></div>
@@ -307,7 +359,7 @@ button.ni { background:none; border:none; font-family:inherit; }
   </div>
 
   <!-- 하단 CTA -->
-  <div style="padding:0 24px calc(env(safe-area-inset-bottom)+20px);flex-shrink:0;">
+  <div class="ob-cta" style="padding:0 24px calc(env(safe-area-inset-bottom) + 20px);flex-shrink:0;">
     <button onclick="showObStep2()" style="width:100%;background:linear-gradient(135deg,#E8847A,#C8B7EE);color:white;border:none;border-radius:22px;padding:17px;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 6px 24px rgba(243,165,155,0.4);letter-spacing:-0.3px;">
       제품 성분 확인하기 →
     </button>
@@ -329,7 +381,7 @@ button.ni { background:none; border:none; font-family:inherit; }
   <div class="ob-deco" style="width:70px;height:70px;background:#C8E1D4;bottom:100px;left:-15px;"></div>
 
   <!-- 상단 뒤로가기 + 진행 표시 -->
-  <div style="display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top)+14px) 20px 10px;flex-shrink:0;">
+  <div style="display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top) + 14px) 20px 10px;flex-shrink:0;">
     <button onclick="showScreen('ob')" class="bbtn" aria-label="뒤로가기"><svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#62534D;fill:none;stroke-width:2.5;stroke-linecap:round;"><polyline points="15 18 9 12 15 6"/></svg></button>
     <div style="flex:1;height:5px;background:#FFE0D9;border-radius:3px;overflow:hidden;">
       <div style="width:100%;height:100%;background:linear-gradient(90deg,#E8847A,#C8B7EE);border-radius:3px;"></div>
@@ -420,7 +472,7 @@ button.ni { background:none; border:none; font-family:inherit; }
   </div>
 
   <!-- 하단 고정 버튼 -->
-  <div style="padding:10px 24px calc(env(safe-area-inset-bottom)+16px);flex-shrink:0;background:linear-gradient(to top,#FEF2F1 80%,transparent);">
+  <div style="padding:10px 24px calc(env(safe-area-inset-bottom) + 16px);flex-shrink:0;background:linear-gradient(to top,#FEF2F1 80%,transparent);">
     <button class="btn-p" onclick="completeOB()" style="border-radius:22px;font-size:16px;padding:16px;width:100%;background:linear-gradient(135deg,#E8847A,#C8B7EE);box-shadow:0 6px 24px rgba(243,165,155,0.35);">분석 시작! 🎉</button>
   </div>
 </div>
@@ -460,20 +512,14 @@ button.ni { background:none; border:none; font-family:inherit; }
       </button>
     </div>
     <!-- ✅ 신뢰 뱃지 — KDRIs 기준 + 약사 검수 (파스텔톤) -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="margin-bottom:12px;">
       <div style="background:linear-gradient(135deg,#EBF6F2,#FBF7E8);border-radius:20px;
-                  padding:8px 13px;display:flex;align-items:center;gap:6px;
+                  padding:8px 13px;display:flex;align-items:center;gap:8px;
                   border:1px solid #B8E8D5;box-shadow:0 2px 8px rgba(136,216,192,0.2);">
-        <span style="font-size:15px;">🏥</span>
+        <span style="font-size:15px;flex-shrink:0;">🏥</span>
         <span style="font-size:10px;font-weight:700;color:#1F7A50;line-height:1.4;">
-          보건복지부·한국영양학회<br>KDRIs 기준 적용
+          보건복지부·한국영양학회 <b>2025 KDRIs</b> 기준 적용 · 상한량 초과 여부 자동 확인
         </span>
-      </div>
-      <div style="background:linear-gradient(135deg,#EDE7FC,#FEF2F1);border-radius:20px;
-                  padding:8px 13px;display:flex;align-items:center;gap:6px;
-                  border:1px solid #D5CFFF;box-shadow:0 2px 8px rgba(197,184,255,0.2);">
-        <span style="font-size:15px;">💊</span>
-        <span style="font-size:10px;font-weight:700;color:#7B6DBB;line-height:1.4;">2025 KDRIs 기준 적용</span>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1981,9 +2027,9 @@ function renderResult(name,inputs,ref){
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <span style="font-size:12px;font-weight:${isc?800:700};color:${isc?'#8B6200':'var(--text)'};">${n.l}</span>${st}</div>
         <div class="pbar"><div class="pbar-f" style="width:${bp}%;background:${bc};"></div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:2px;">
-          <span style="font-size:10px;color:var(--text-hint);">일일 권장 ${rec}${n.u} · ${ulTxt} · 음식 제외</span>
-          <span style="font-size:10px;font-weight:700;color:var(--text-sub);">${val}${n.u} (${Math.round(pct*100)}%)</span>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:2px;">
+          <span style="font-size:10px;color:var(--text-hint);line-height:1.35;">권장 ${rec}${n.u} · ${ulTxt}</span>
+          <span style="font-size:10px;font-weight:700;color:var(--text-sub);white-space:nowrap;flex-shrink:0;">${val}${n.u} (${Math.round(pct*100)}%)</span>
         </div>
       </div></div>`;
   });
@@ -2028,10 +2074,10 @@ function renderResult(name,inputs,ref){
         : `<p style="font-size:12px;font-weight:800;color:#2E9E84;margin-bottom:8px;">✅ 지금 먹이는 영양제와 합쳐도 상한 이내예요</p>`;
     ch=`<div class="card" style="border-left:4px solid ${overs?'#F3A59B':nears?'#F3D68A':'#C8E1D4'};">
       <p style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px;">🧮 현재 복용 영양제 + 이 제품 = 1일 합산</p>${head}
-      <table style="width:100%;font-size:11px;border-collapse:collapse;">
-        <thead><tr style="color:var(--text-hint);"><th style="text-align:left;padding:3px 0;">성분</th><th style="text-align:right;">기존</th><th style="text-align:right;">이 제품</th><th style="text-align:right;">합계</th><th style="text-align:right;">판정</th></tr></thead>
-        <tbody>${rows.map(r=>`<tr style="border-top:1px solid var(--divider);"><td style="padding:5px 0;font-weight:700;">${NUT[r.k].e} ${NUT[r.k].l}</td><td style="text-align:right;color:var(--text-sub);">${r.prev?fmtAmt(r.k,r.prev):'-'}</td><td style="text-align:right;">${r.add?fmtAmt(r.k,r.add):'-'}</td><td style="text-align:right;font-weight:800;color:${r.color};">${fmtAmt(r.k,r.sum)}</td><td style="text-align:right;">${r.tag}</td></tr>`).join('')}</tbody>
-      </table>
+      <div class="sum-list">${rows.map(r=>`<div class="sum-row">
+        <div class="sum-head"><span class="sum-name">${NUT[r.k].e} ${NUT[r.k].l}</span>${r.tag}</div>
+        <div class="sum-nums"><span>기존 <b>${r.prev?fmtAmt(r.k,r.prev):'-'}</b></span><span>+ 이 제품 <b>${r.add?fmtAmt(r.k,r.add):'-'}</b></span><span class="sum-total" style="color:${r.color};">= ${fmtAmt(r.k,r.sum)}${r.ul?' <small>/ 상한 '+fmtAmt(r.k,r.ul)+'</small>':''}</span></div>
+      </div>`).join('')}</div>
       ${missing.length?`<p style="font-size:10px;color:var(--text-hint);margin-top:8px;">※ 성분 미등록 영양제 ${missing.length}개(${missing.map(m=>m.name).slice(0,3).join(', ')})는 합산에서 빠졌어요. 라벨을 스캔해 "일정에 추가"하면 반영돼요.</p>`:''}
     </div>`;
   } else if(S.supplements.some(s=>(!s.status||s.status==='active'))){
