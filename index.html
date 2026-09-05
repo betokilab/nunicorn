@@ -2388,11 +2388,12 @@ function renderInsights(){
 
   // ── 복용 순응도 (최근 30일) ──
   const days=[]; for(let i=0;i<30;i++){const d=new Date(Date.now()-i*86400000);days.push(d.toISOString().slice(0,10));}
-  const activeIds=active.map(x=>x.id);
+  // 등록일 이후만 분모에 포함 (id 's_<timestamp>' 또는 created 필드)
+  const createdDay=x=>{const ms=x.created||(typeof x.id==='string'&&/^s_(\d{13})$/.test(x.id)?parseInt(x.id.slice(2)):null); return ms?new Date(ms).toISOString().slice(0,10):'0000-00-00';};
   let checked=0, possible=0, daysWithAny=0;
-  days.forEach(d=>{const log=S.dailyLog[d]||{}; let any=false; activeIds.forEach(id=>{possible++; if(log[id]){checked++;any=true;}}); if(any)daysWithAny++;});
+  days.forEach(d=>{const log=S.dailyLog[d]||{}; let any=false; active.forEach(x=>{ if(d<createdDay(x)) return; possible++; if(log[x.id]){checked++;any=true;} }); if(any)daysWithAny++;});
   const adherence=possible?Math.round(checked/possible*100):null;
-  const perSupp=active.map(x=>{let c=0,p=0;days.slice(0,14).forEach(d=>{p++; if(S.dailyLog[d]?.[x.id])c++;});return {name:x.name,emoji:x.emoji,rate:Math.round(c/p*100)};}).sort((a,b)=>a.rate-b.rate);
+  const perSupp=active.map(x=>{let c=0,p=0;const cd=createdDay(x);days.slice(0,14).forEach(d=>{ if(d<cd) return; p++; if(S.dailyLog[d]?.[x.id])c++;});return {name:x.name,emoji:x.emoji,rate:p?Math.round(c/p*100):0,days:p};}).sort((a,b)=>a.rate-b.rate);
 
   // ── 합산 vs 권장/상한 ──
   const rows=Object.keys(totals).filter(k=>NUT[k]).map(k=>{
@@ -2442,7 +2443,7 @@ function renderInsights(){
     html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin:12px 0 8px;">✅ 최근 14일 복용 체크율</p><div class="card" style="padding:13px;">`;
     perSupp.forEach(x=>{
       const c=x.rate>=80?'#2E9E84':x.rate>=50?'#E0B000':'#C0392B';
-      html+=`<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;">${x.emoji||'💊'} ${x.name}</span><span style="font-size:11px;font-weight:700;color:${c};">${x.rate}%</span></div><div style="height:5px;background:#EEE;border-radius:3px;overflow:hidden;"><div style="width:${x.rate}%;height:100%;background:${c};"></div></div></div>`;
+      html+=`<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="font-size:11px;font-weight:600;">${x.emoji||'💊'} ${x.name}</span><span style="font-size:11px;font-weight:700;color:${c};">${x.rate}%<span style="font-weight:400;color:var(--text-hint);"> · ${x.days}일 중</span></span></div><div style="height:5px;background:#EEE;border-radius:3px;overflow:hidden;"><div style="width:${x.rate}%;height:100%;background:${c};"></div></div></div>`;
     });
     html+=`<p style="font-size:10px;color:var(--text-hint);">홈 화면에서 매일 체크한 기록 기준이에요. 체크를 안 하면 낮게 나와요.</p></div>`;
   }

@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat: nutrition report rebuilt - regimen totals vs RNI/UL, 30-day adherence, pediatrician summary copy/share"
+git commit -m "fix(report): adherence denominators start at supplement creation date"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
