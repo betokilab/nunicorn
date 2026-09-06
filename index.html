@@ -43,7 +43,10 @@
 <meta property="og:url" content="https://www.nunicorn.co.kr/">
 <meta property="og:title" content="뉴니콘 — 영유아부터 키즈까지, 우리 아이 영양제 AI 도우미">
 <meta property="og:description" content="라벨 스캔 한 번으로 영양제 성분 분석, 나이별 권장량 비교, AI 코니 맞춤 상담. 0~12세 영유아 영양 관리의 시작.">
-<meta property="og:image" content="https://www.nunicorn.co.kr/og-image.png">
+<meta property="og:image" content="https://www.nunicorn.co.kr/og-image.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="뉴니콘 — 우리 아이 영양제, 라벨 사진 한 장으로 권장량·상한량 바로 확인">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="뉴니콘">
 
@@ -51,7 +54,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="뉴니콘 — 영유아부터 키즈까지, 우리 아이 영양제 AI 도우미">
 <meta name="twitter:description" content="영양제 라벨 스캔으로 성분 분석 + AI 코니 영양정보 안내. 0~12세 맞춤 영양 관리.">
-<meta name="twitter:image" content="https://www.nunicorn.co.kr/og-image.png">
+<meta name="twitter:image" content="https://www.nunicorn.co.kr/og-image.png?v=2">
 
 <!-- 구조화 데이터 (구글 리치 결과) -->
 
@@ -666,10 +669,11 @@ button.ni { background:none; border:none; font-family:inherit; }
     <p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">💬 주의사항</p>
     <div id="result-interactions"></div>
     <div class="card" style="background:linear-gradient(135deg,#EBF6F2,#FBF7E8);box-shadow:none;" id="result-tips"></div>
-    <div style="display:flex;gap:8px;margin-top:12px;margin-bottom:20px;">
+    <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="btn-s" style="flex:1;" onclick="showScreen('scan')">다시 입력</button>
       <button class="btn-p" style="flex:2;" onclick="saveToSchedule()">📅 일정에 추가</button>
     </div>
+    <button class="btn-s" style="margin-top:8px;margin-bottom:20px;background:linear-gradient(135deg,#EDE7FC,#FEF2F1);color:#7B6DBB;" onclick="openShareCard()">📤 결과를 이미지로 저장·공유 <span style="font-weight:500;font-size:11px;">(카톡으로 가족에게)</span></button>
   </div>
   <nav class="bnav" aria-label="주요 메뉴">
     <button class="ni" onclick="showScreen('home')"  aria-label="홈"><div class="ni-icon">🏠</div><span class="ni-label">홈</span></button>
@@ -897,6 +901,20 @@ button.ni { background:none; border:none; font-family:inherit; }
     </div>
     <button class="btn-p" id="fb-submit-btn" onclick="submitFeedback()" style="border-radius:20px;">의견 보내기 🚀</button>
     <p style="font-size:10px;color:var(--text-hint);text-align:center;margin-top:8px;">익명으로 전송되며 서비스 개선에만 활용돼요</p>
+  </div>
+</div>
+<div class="modal-overlay" id="share-modal" onclick="cmbg(event,'share-modal')">
+  <div class="modal-sheet" style="max-height:92%;display:flex;flex-direction:column;">
+    <div class="mhandle"></div>
+    <p style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px;">📤 분석 결과 이미지</p>
+    <p style="font-size:11px;color:var(--text-sub);margin-bottom:10px;">아이 이름·월령과 제품 성분 판정이 담겨 있어요. 가족·소아과와 공유할 때 참고용으로 사용하세요.</p>
+    <div style="flex:1;overflow-y:auto;border-radius:14px;background:var(--bg);padding:8px;min-height:0;">
+      <img id="share-img" alt="분석 결과 이미지" style="width:100%;display:block;border-radius:10px;box-shadow:var(--shadow-sm);">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn-s" style="flex:1;" onclick="downloadShareCard()">📥 저장</button>
+      <button class="btn-p" style="flex:2;" id="share-btn" onclick="shareShareCard()">📤 공유하기</button>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="add-modal" onclick="cmbg(event,'add-modal')">
@@ -1972,6 +1990,9 @@ function renderResult(name,inputs,ref){
   const crit=ref.baby?['vitD','iron','omega3']:[];
   const ageMo=S.profile.birthdate?calcMonthsFromBirthdate(S.profile.birthdate):S.profile.months;
   let nh='';
+  // 공유 이미지 카드용 데이터
+  const card={child:(S.profile.name||'우리 아이')+' · 생후 '+em+'개월 ('+ref.label+')',product:name,rows:[],sum:null,ageMo};
+  if(lastResult) lastResult.card=card;
   // 영아 수유 방식별 안내 (진단·처방 아님, 일반 정보)
   if(ageMo<=11 && S.profile.feeding){
     const f=S.profile.feeding; let tip='';
@@ -1987,6 +2008,7 @@ function renderResult(name,inputs,ref){
     if(n.info){
       // 유산균 등 권장량 기준이 없는 성분: 정보만 표시
       const disp = k==='probiotic' ? (val/1e8).toFixed(val%1e8?1:0)+'억 CFU' : val+n.u;
+      card.rows.push({e:n.e,l:n.l,disp,sub:'권장량 기준 없음 · 참고',status:'참고',color:'#7B6DBB',bp:0,bc:'#EDE7FC'});
       nh+=`<div style="display:flex;align-items:center;gap:9px;margin-bottom:13px;"><span style="font-size:18px;width:24px;">${n.e}</span><div style="flex:1;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:13px;font-weight:700;">${n.l}</span><span style="font-size:12px;color:var(--text-sub);">${disp}</span></div><span class="tag" style="background:#EDE7FC;color:#7B6DBB;">권장량 기준 없음 · 참고 정보</span></div></div>`;
       return;
     }
@@ -2022,6 +2044,9 @@ function renderResult(name,inputs,ref){
     }
     const isc=crit.includes(k);
     const ulTxt=ageULVal!==null?'상한 '+ageULVal+n.u:'공식 상한 없음';
+    card.rows.push({e:n.e,l:n.l,disp:val+n.u+' ('+Math.round(pct*100)+'%)',sub:'권장 '+rec+n.u+' · '+ulTxt,
+      status:statusLevel===1?'상한 초과':statusLevel===2?'상한 '+Math.round(ulRatio*100)+'%':statusLevel===3?'상한 기준 없음':statusLevel===4?'기준량 이상':'기준의 '+Math.round(pct*100)+'%',
+      color:statusLevel===1?'#D45A4A':statusLevel===2?'#C8920A':statusLevel===3?'#7B6DBB':statusLevel===4?'#2E9E84':'#888',bp,bc});
     nh+=`<div style="display:flex;align-items:center;gap:9px;margin-bottom:13px;${isc?'background:var(--yellow-light);border-radius:9px;padding:7px;margin-left:-4px;margin-right:-4px;':''}">
       <span style="font-size:18px;width:24px;">${n.e}${isc?' ⭐':''}</span>
       <div style="flex:1;">
@@ -2073,6 +2098,11 @@ function renderResult(name,inputs,ref){
       : nears>0
         ? `<p style="font-size:12px;font-weight:800;color:#B8860B;margin-bottom:8px;">🟡 합산하면 상한에 가까운 성분이 있어요</p>`
         : `<p style="font-size:12px;font-weight:800;color:#2E9E84;margin-bottom:8px;">✅ 지금 먹이는 영양제와 합쳐도 상한 이내예요</p>`;
+    card.sum={overs,nears,
+      head:overs>0?'⚠️ 이 제품을 추가하면 '+overs+'개 성분이 상한을 넘어요':nears>0?'🟡 합산하면 상한에 가까운 성분이 있어요':'✅ 지금 먹이는 영양제와 합쳐도 상한 이내예요',
+      color:overs>0?'#C0392B':nears>0?'#B8860B':'#2E9E84',
+      rows:rows.map(r=>({e:NUT[r.k].e,l:NUT[r.k].l,prev:r.prev?fmtAmt(r.k,r.prev):'-',add:r.add?fmtAmt(r.k,r.add):'-',sum:fmtAmt(r.k,r.sum),ul:r.ul?fmtAmt(r.k,r.ul):null,over:!!(r.ul&&r.sum>r.ul),near:!!(r.ul&&r.ratio>=0.8&&r.sum<=r.ul),color:r.color}))};
+    const doctorBtn = overs>0 ? `<button class="btn-s" style="margin-top:10px;background:#FEF2F1;color:#C0392B;" onclick="copyResultDoctorSummary()">🏥 소아과 상담용 요약 복사</button>` : '';
     ch=`<div class="card" style="border-left:4px solid ${overs?'#F3A59B':nears?'#F3D68A':'#C8E1D4'};">
       <p style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px;">🧮 현재 복용 영양제 + 이 제품 = 1일 합산</p>${head}
       <div class="sum-list">${rows.map(r=>`<div class="sum-row">
@@ -2080,6 +2110,7 @@ function renderResult(name,inputs,ref){
         <div class="sum-nums"><span>기존 <b>${r.prev?fmtAmt(r.k,r.prev):'-'}</b></span><span>+ 이 제품 <b>${r.add?fmtAmt(r.k,r.add):'-'}</b></span><span class="sum-total" style="color:${r.color};">= ${fmtAmt(r.k,r.sum)}${r.ul?' <small>/ 상한 '+fmtAmt(r.k,r.ul)+'</small>':''}</span></div>
       </div>`).join('')}</div>
       ${missing.length?`<p style="font-size:10px;color:var(--text-hint);margin-top:8px;">※ 성분 미등록 영양제 ${missing.length}개(${missing.map(m=>m.name).slice(0,3).join(', ')})는 합산에서 빠졌어요. 라벨을 스캔해 "일정에 추가"하면 반영돼요.</p>`:''}
+      ${doctorBtn}
     </div>`;
   } else if(S.supplements.some(s=>(!s.status||s.status==='active'))){
     ch=`<div class="card" style="border-left:4px solid #E8E8E8;"><p style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">🧮 합산 판정을 하려면</p><p style="font-size:11px;color:var(--text-sub);line-height:1.6;">지금 등록된 영양제 ${missing.length}개에 성분 정보가 없어요. 각 제품 라벨을 스캔한 뒤 <b>일정에 추가</b>를 누르면 성분이 저장되고, 다음 스캔부터 겹치는 성분을 자동으로 합산해 드려요.</p></div>`;
@@ -2100,6 +2131,121 @@ function renderResult(name,inputs,ref){
         ⚠️ 이 분석은 영양제 라벨의 보충량을 계산한 참고 자료예요. 음식으로 섭취하는 양, 혈액검사 결과, 개인 건강 상태는 반영되지 않으므로 실제 영양 결핍 여부는 판단할 수 없어요. 건강 이상이 있거나 다른 약을 복용 중이라면 소아과에서 확인해주세요.
       </p>
     </div>`;
+}
+// ═══════════ 결과 이미지 카드 (공유용) ═══════════
+// 기기 안에서 canvas로 그리며 서버로 전송하지 않음. 사용자가 직접 저장/공유할 때만 밖으로 나감.
+let _shareBlob=null, _logoImg=null;
+function loadImg(src){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src;});}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function wrapText(ctx,text,maxW){const out=[];let line='';for(const ch of text){const t=line+ch;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=ch;}else line=t;}if(line)out.push(line);return out;}
+async function renderResultCard(card){
+  const W=1080, P=64, F="-apple-system,'Pretendard','Apple SD Gothic Neo','Noto Sans KR',sans-serif";
+  if(!_logoImg) _logoImg=await loadImg('/images/logo.png');
+  const cony=await loadImg('/images/cony-face.png');
+  const rowH=118, sumRowH=96;
+  const sumH = card.sum ? 120 + card.sum.rows.length*sumRowH + 24 : 0;
+  const H = 300 + 70 + card.rows.length*rowH + 30 + sumH + 230;
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+  // 배경
+  const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,'#FEF2F1'); g.addColorStop(0.6,'#FBF7E8'); g.addColorStop(1,'#EDE7FC'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  // 헤더
+  if(_logoImg){const lw=250;x.drawImage(_logoImg,P,56,lw,lw*_logoImg.height/_logoImg.width);}
+  x.fillStyle='#E8847A'; x.font='700 22px '+F; x.fillText('BETA',P+262,84);
+  x.fillStyle='#9A8F8B'; x.font='500 24px '+F; x.fillText('영양제 라벨 분석 결과 · '+new Date().toLocaleDateString('ko-KR'),P,150);
+  if(cony) x.drawImage(cony,W-P-150,40,150,150);
+  // 아이 · 제품
+  x.fillStyle='#62534D'; x.font='800 40px '+F; x.fillText(wrapText(x,card.product,W-P*2-170)[0]||'',P,215);
+  x.fillStyle='#7B6DBB'; x.font='700 26px '+F; x.fillText('👶 '+card.child,P,262);
+  let y=300;
+  // 성분 카드
+  x.fillStyle='#fff'; rr(x,P,y,W-P*2,50+card.rows.length*rowH,28); x.fill();
+  x.fillStyle='#9A8F8B'; x.font='700 24px '+F; x.fillText('🔍 성분별 체크 (음식 섭취량 미포함)',P+32,y+42);
+  y+=70;
+  card.rows.forEach(r=>{
+    x.font='400 34px '+F; x.fillStyle='#62534D'; x.fillText(r.e,P+32,y+40);
+    x.font='800 28px '+F; x.fillText(r.l,P+90,y+38);
+    x.font='700 26px '+F; x.textAlign='right'; x.fillStyle='#62534D'; x.fillText(r.disp,W-P-32,y+38);
+    x.textAlign='left';
+    // 상태 태그
+    x.font='700 21px '+F; const tw=x.measureText(r.status).width+28;
+    x.fillStyle=r.color+'22'; rr(x,P+90,y+52,tw,34,17); x.fill(); x.fillStyle=r.color; x.fillText(r.status,P+104,y+76);
+    x.font='500 20px '+F; x.fillStyle='#9A8F8B'; x.fillText(r.sub,P+90+tw+16,y+76);
+    // 바
+    x.fillStyle='#F3EDE8'; rr(x,P+90,y+96,W-P*2-122,10,5); x.fill();
+    if(r.bp>0){x.fillStyle=r.bc; rr(x,P+90,y+96,Math.max(10,(W-P*2-122)*Math.min(r.bp,200)/200),10,5); x.fill();}
+    y+=rowH;
+  });
+  y+=30;
+  // 합산 카드
+  if(card.sum){
+    const s=card.sum, h=120+s.rows.length*sumRowH;
+    x.fillStyle='#fff'; rr(x,P,y,W-P*2,h,28); x.fill();
+    x.fillStyle=s.color; x.fillRect(P,y+28,8,h-56);
+    x.fillStyle='#9A8F8B'; x.font='700 24px '+F; x.fillText('🧮 현재 복용 영양제 + 이 제품 = 1일 합산',P+40,y+44);
+    x.fillStyle=s.color; x.font='800 30px '+F; x.fillText(s.head,P+40,y+92);
+    let sy=y+120;
+    s.rows.forEach(r=>{
+      x.fillStyle='#F3EDE8'; x.fillRect(P+40,sy,W-P*2-80,2);
+      x.fillStyle='#62534D'; x.font='800 26px '+F; x.fillText(r.e+' '+r.l,P+40,sy+40);
+      const tag=r.over?'합산 초과':r.near?'상한 근접':r.ul?'상한 이내':'상한 없음', tc=r.over?'#D45A4A':r.near?'#C8920A':r.ul?'#2E9E84':'#7B6DBB';
+      x.font='700 21px '+F; const tw=x.measureText(tag).width+28; x.fillStyle=tc+'22'; rr(x,W-P-40-tw,sy+14,tw,34,17); x.fill(); x.fillStyle=tc; x.fillText(tag,W-P-40-tw+14,sy+38);
+      x.font='500 22px '+F; x.fillStyle='#9A8F8B'; x.fillText('기존 '+r.prev+'  +  이 제품 '+r.add+'  =  ',P+40,sy+78);
+      const pre=x.measureText('기존 '+r.prev+'  +  이 제품 '+r.add+'  =  ').width;
+      x.font='800 24px '+F; x.fillStyle=r.color==='var(--text-sub)'?'#62534D':r.color; x.fillText(r.sum+(r.ul?'  / 상한 '+r.ul:''),P+40+pre,sy+78);
+      sy+=sumRowH;
+    });
+    y+=h+24;
+  }
+  // 푸터
+  x.fillStyle='#9A8F8B'; x.font='500 19px '+F;
+  const disc=wrapText(x,'⚠️ 영양제 라벨의 보충량을 2025 한국인 영양소 섭취기준(KDRIs)과 비교한 참고 자료예요. 음식 섭취량·검사 결과·건강 상태는 반영되지 않으며 진단이나 처방이 아닙니다. 복용 전 소아과 전문의와 상의하세요.',W-P*2);
+  disc.forEach((l,i)=>x.fillText(l,P,y+34+i*28));
+  y+=34+disc.length*28+30;
+  x.fillStyle='#fff'; rr(x,P,y,W-P*2,84,42); x.fill();
+  x.fillStyle='#7B6DBB'; x.font='800 28px '+F; x.fillText('🦄 라벨 사진 한 장으로 우리 아이 기준 확인 · www.nunicorn.co.kr',P+32,y+54);
+  return new Promise(res=>c.toBlob(b=>res({blob:b,url:c.toDataURL('image/png')}),'image/png'));
+}
+async function openShareCard(){
+  if(!lastResult||!lastResult.card){showToast('먼저 분석을 진행해주세요');return;}
+  showToast('🎨 이미지를 만드는 중…',1200);
+  try{
+    const {blob,url}=await renderResultCard(lastResult.card);
+    _shareBlob=blob; document.getElementById('share-img').src=url;
+    const canShare=!!(navigator.canShare&&navigator.canShare({files:[new File([blob],'a.png',{type:'image/png'})]}));
+    document.getElementById('share-btn').style.display=canShare?'':'none';
+    showModal('share-modal'); logA('share_open',{});
+  }catch(e){console.warn(e);showToast('이미지 생성에 실패했어요');}
+}
+function downloadShareCard(){
+  if(!_shareBlob)return;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(_shareBlob); a.download='nunicorn_'+(lastResult?.name||'result').replace(/[\\/:*?"<>|]/g,'')+'.png';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+  showToast('📥 저장했어요. 카톡 대화창에서 사진으로 첨부해 보세요'); logA('share_download',{});
+}
+async function shareShareCard(){
+  if(!_shareBlob)return;
+  const file=new File([_shareBlob],'nunicorn_result.png',{type:'image/png'});
+  try{
+    await navigator.share({files:[file],title:'뉴니콘 영양제 분석 결과',text:'우리 아이 기준으로 영양제 라벨을 분석했어요 — 뉴니콘 https://www.nunicorn.co.kr'});
+    logA('share_native',{}); closeModal('share-modal');
+  }catch(e){ if(e&&e.name!=='AbortError') downloadShareCard(); }
+}
+// 합산 초과 시 소아과 상담용 텍스트 요약
+async function copyResultDoctorSummary(){
+  const c=lastResult&&lastResult.card; if(!c) return;
+  const L=[]; L.push('[뉴니콘 영양제 합산 요약] '+new Date().toLocaleDateString('ko-KR'));
+  L.push('아이: '+c.child); L.push('검토 제품: '+c.product); L.push('');
+  L.push('■ 이 제품 성분 (라벨 기준)');
+  c.rows.forEach(r=>L.push('- '+r.l+' '+r.disp+' — '+r.status+(r.sub?' ('+r.sub+')':'')));
+  if(c.sum){ L.push(''); L.push('■ 현재 복용 영양제 + 이 제품 = 1일 합산'); L.push(c.sum.head.replace(/^[^\s]+\s/,''));
+    c.sum.rows.forEach(r=>L.push('- '+r.l+': 기존 '+r.prev+' + 이 제품 '+r.add+' = '+r.sum+(r.ul?' / 상한 '+r.ul:'')+(r.over?' ⚠️ 초과':r.near?' (상한 근접)':''))); }
+  const active=S.supplements.filter(s=>(!s.status||s.status==='active'));
+  if(active.length){ L.push(''); L.push('■ 현재 복용 중 영양제'); active.forEach(s=>L.push('- '+s.name+(s.timing?' ('+s.timing+')':''))); }
+  L.push(''); L.push('※ 2025 KDRIs 기준, 음식 섭취량 미포함. 라벨 정보를 사용자가 입력한 참고 자료이며 진단·처방이 아닙니다.');
+  L.push('www.nunicorn.co.kr');
+  const text=L.join('\n');
+  try{ await navigator.clipboard.writeText(text); showToast('📋 복사했어요. 소아과 방문 시 보여주세요'); logA('doctor_copy_result',{}); }
+  catch(e){ if(navigator.share){ try{ await navigator.share({title:'뉴니콘 영양제 합산 요약',text}); }catch(_){} } else showToast('복사에 실패했어요'); }
 }
 function saveToSchedule(){
   if(!lastResult)return;

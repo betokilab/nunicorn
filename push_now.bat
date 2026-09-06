@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix(seo): multi-size favicon.ico + shortcut icon link for Naver/Google"
+git commit -m "feat(share): result image card share/download, og-image.png, doctor summary copy on UL exceed"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )
