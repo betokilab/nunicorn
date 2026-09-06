@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(share): result image card share/download, og-image.png, doctor summary copy on UL exceed"
+git commit -m "feat(audit): email magic-link login, account deletion API, feeding/weight edit, cony images 11MB to 640KB, HSTS+CSP, schedule empty CTA"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

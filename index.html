@@ -408,7 +408,7 @@ button.ni { background:none; border:none; font-family:inherit; }
     <div style="background:#FBF7E8;border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid #F3D68A;">
       <p style="font-size:11px;color:#8B6200;line-height:1.7;margin:0;">
         📋 <b>월령별 기준 적용을 위해 생년월일이 필요합니다.</b><br>
-        이름과 성별은 선택사항이에요. 저장된 정보는 기기 내에만 보관되며 설정에서 언제든 삭제할 수 있어요.
+        이름과 성별은 선택사항이에요. 정보는 이 기기에 저장되고(로그인하면 계정에 동기화), 내 아이 화면에서 언제든 삭제할 수 있어요.
       </p>
     </div>
 
@@ -773,6 +773,8 @@ button.ni { background:none; border:none; font-family:inherit; }
       <div class="sr" onclick="showModal('en-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">이름</span><span style="font-size:13px;color:var(--text-sub);" id="ps-name">-</span></div>
       <div class="sr" onclick="showModal('ea-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">나이</span><span style="font-size:13px;color:var(--text-sub);" id="ps-age">-</span></div>
       <div class="sr" onclick="showModal('ee-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">이모지</span><span id="ps-emoji">👶</span></div>
+      <div class="sr" onclick="showModal('ef-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">🍼 수유·식사</span><span style="font-size:13px;color:var(--text-sub);" id="ps-feeding">-</span></div>
+      <div class="sr" onclick="showModal('ef-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">⚖️ 몸무게</span><span style="font-size:13px;color:var(--text-sub);" id="ps-weight">-</span></div>
     </div>
     <div class="card" id="member-info-card">
       <p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">💜 멤버십</p>
@@ -784,7 +786,7 @@ button.ni { background:none; border:none; font-family:inherit; }
     </div>
     <div class="card">
       <p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">앱 정보</p>
-      <div class="sr" style="cursor:default;"><span style="font-size:14px;font-weight:600;color:var(--text);">버전</span><span style="font-size:13px;color:var(--text-sub);">1.2.0</span></div>
+      <div class="sr" style="cursor:default;"><span style="font-size:14px;font-weight:600;color:var(--text);">버전</span><span style="font-size:13px;color:var(--text-sub);">1.3.0</span></div>
       <div class="sr" onclick="showModal('privacy-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">📄 개인정보처리방침</span><span style="font-size:13px;color:var(--text-sub);">›</span></div>
       <div class="sr" onclick="showModal('terms-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">📋 이용약관</span><span style="font-size:13px;color:var(--text-sub);">›</span></div>
       <div style="padding:14px 16px;border-top:1px solid var(--divider);margin-top:4px;">
@@ -796,7 +798,8 @@ button.ni { background:none; border:none; font-family:inherit; }
         </p>
       </div>
     </div>
-    <button onclick="resetAll()" style="background:var(--bad-bg);color:var(--bad);border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:700;width:100%;cursor:pointer;">데이터 초기화</button>
+    <button onclick="resetAll()" style="background:var(--bad-bg);color:var(--bad);border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:700;width:100%;cursor:pointer;">이 기기의 데이터 초기화</button>
+    <button id="btn-delete-account" onclick="deleteAccount()" style="display:none;margin-top:8px;background:transparent;color:var(--text-hint);border:1px solid var(--divider);border-radius:var(--radius-sm);padding:11px;font-size:12px;font-weight:600;width:100%;cursor:pointer;">회원 탈퇴 (계정·서버 데이터 삭제)</button>
     <div style="height:18px;"></div>
   </div>
   <nav class="bnav" aria-label="주요 메뉴">
@@ -808,7 +811,7 @@ button.ni { background:none; border:none; font-family:inherit; }
   </nav>
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <!-- 개인정보처리방침 모달 -->
 <div class="modal-overlay" id="privacy-modal" onclick="cmbg(event,'privacy-modal')" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
@@ -831,8 +834,8 @@ button.ni { background:none; border:none; font-family:inherit; }
       <p>본 서비스는 영유아 보호자가 이용하는 서비스입니다. 아이의 생년월일·성별·수유 방식·몸무게 등 건강 관련 정보는 보호자가 직접 입력·관리하며, 모두 선택 입력(생년월일 제외)입니다.<br>
       만 14세 미만 아동의 개인정보는 법정대리인(보호자)이 동의한 범위 내에서만 처리되며, 서비스 가입 및 이용 자체가 보호자의 동의로 간주됩니다.</p>
       <p style="font-weight:700;color:var(--text);margin:12px 0 4px;">회원 탈퇴 및 데이터 삭제</p>
-      <p>회원 탈퇴 요청 시 서버 데이터는 30일 이내 파기됩니다.<br>
-      탈퇴 및 서버 데이터 삭제 요청: heechco@gmail.com</p>
+      <p>내 아이 화면 → "회원 탈퇴" 버튼으로 즉시 탈퇴할 수 있으며, 계정과 연결된 아이 정보·영양제·복용 기록·라벨 분석 기록은 즉시 삭제됩니다. AI 상담 기록은 회원 식별 정보를 제거(익명화)한 뒤 서비스 품질 검토 목적으로만 보관됩니다.<br>
+      이메일 요청(heechco@gmail.com) 시에도 30일 이내 파기됩니다.</p>
       <p style="font-weight:700;color:var(--text);margin:12px 0 4px;">데이터 삭제</p>
       <p>프로필 화면 → 데이터 초기화 버튼으로 기기 내 데이터를 삭제할 수 있습니다.<br>
       계정 및 서버 데이터 삭제: heechco@gmail.com으로 문의해 주세요.</p>
@@ -980,24 +983,22 @@ button.ni { background:none; border:none; font-family:inherit; }
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;"><span>비회원</span><span style="color:var(--text-sub);">하루 3회 · 간단 답변</span></div>
         <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:700;color:var(--primary-dark);">멤버 (무료)</span><span style="font-weight:700;color:var(--primary-dark);">하루 10회 · 상세 답변</span></div>
       </div>
-      <!-- 소셜 로그인 -->
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <button id="btn-login-kakao" onclick="signInWithKakao()" style="width:100%;border-radius:18px;padding:13px;background:#FEE500;color:#3C1E1E;border:none;box-shadow:0 2px 8px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700;cursor:pointer;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.717 1.566 5.112 3.938 6.54L5 21l4.267-2.247A11.2 11.2 0 0012 19.2c5.523 0 10-3.477 10-8.4S17.523 3 12 3z"/></svg>
-          카카오로 1초 가입
-        </button>
-        <button disabled aria-label="네이버 로그인 준비 중" style="width:100%;border-radius:18px;padding:13px;background:#ccc;color:#888;border:none;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:700;cursor:not-allowed;opacity:0.6;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#888"><path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>
-          네이버 로그인 (준비 중)
-        </button>
-        <button id="btn-login-google" onclick="signInWithGoogle()" style="width:100%;border-radius:18px;padding:12px;background:white;color:#62534D;border:1.5px solid #ddd;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600;cursor:pointer;">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px;height:20px;">구글로 1초 가입
-        </button>
-      </div>
+      <div class="login-box" data-ctx="signup"></div>
     </div>
   </div>
 </div>
 
+<div class="modal-overlay" id="ef-modal" onclick="cmbg(event,'ef-modal')" role="dialog" aria-modal="true" aria-label="수유 방식·몸무게 변경">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="mhandle"></div>
+    <p style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:12px;">🍼 수유·식사 방식과 몸무게</p>
+    <div class="field"><label class="flabel" for="ef-feeding">수유·식사 방식</label>
+      <select id="ef-feeding"><option value="">선택 안 함</option><option value="breast">모유 수유</option><option value="formula">분유 수유</option><option value="mixed">혼합 수유</option><option value="solid">이유식·일반식 병행</option><option value="regular">일반식 (돌 이후)</option></select></div>
+    <div class="field"><label class="flabel" for="ef-weight">몸무게 (kg)</label><input type="number" id="ef-weight" inputmode="decimal" min="1" max="80" step="0.1" placeholder="예: 10.5"></div>
+    <p style="font-size:11px;color:var(--text-hint);margin-bottom:12px;">비타민D·철분 안내와 AI 상담 답변에 참고돼요. 기기에 저장되며 로그인 시 계정에 동기화돼요.</p>
+    <button class="btn-p" onclick="saveFeeding()">저장</button>
+  </div>
+</div>
 <div class="modal-overlay" id="en-modal" onclick="cmbg(event,'en-modal')" role="dialog" aria-modal="true" aria-label="이름 변경">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="mhandle"></div>
@@ -1285,9 +1286,12 @@ function applyServerQuota(data){
     try{updateQuotaBadge();}catch{}
   }
 }
+let _quotaSyncAt=0,_quotaSyncUid='';
 async function syncQuotaFromServer(){
   try{
     const uid=S.member?.id||supaUser?.id||'';
+    if(Date.now()-_quotaSyncAt<1500 && _quotaSyncUid===uid) return; // 초기화 시 중복 호출 방지
+    _quotaSyncAt=Date.now(); _quotaSyncUid=uid;
     const r=await fetch('/api/chat?quota=1'+(uid?'&userId='+encodeURIComponent(uid):''));
     if(r.ok){ const d=await r.json(); applyServerQuota({quotaLeft:d.left, quotaLimit:d.limit}); }
   }catch{}
@@ -1414,6 +1418,50 @@ function initSupa() {
       }
     });
   } catch(e) { console.warn('Supabase init error:', e); }
+  loadAuthProviders();
+}
+
+// ── 활성화된 로그인 방식 확인 (소셜 제공자가 꺼져 있으면 버튼을 숨김) ──
+let AUTH_PROVIDERS={email:true,google:false,kakao:false};
+async function loadAuthProviders(){
+  try{
+    const r=await fetch(SUPA_URL+'/auth/v1/settings',{headers:{apikey:SUPA_KEY}});
+    const j=await r.json(); const ex=j.external||{};
+    AUTH_PROVIDERS={email:ex.email!==false,google:!!ex.google,kakao:!!ex.kakao};
+  }catch(e){}
+  document.querySelectorAll('.login-box').forEach(el=>el.innerHTML=loginButtonsHtml(el.dataset.ctx||'profile'));
+}
+function loginButtonsHtml(ctx){
+  const big=ctx==='signup';
+  const id=ctx+'-login-email';
+  let h=`<div style="display:flex;flex-direction:column;gap:8px;">
+    <form onsubmit="event.preventDefault();sendLoginLink('${id}')" style="display:flex;flex-direction:column;gap:8px;">
+      <input type="email" id="${id}" inputmode="email" autocomplete="email" placeholder="이메일 주소" required style="width:100%;padding:${big?13:12}px 14px;border-radius:16px;font-size:14px;">
+      <button type="submit" class="btn-p" style="border-radius:18px;padding:${big?13:12}px;font-size:${big?15:14}px;">✉️ 이메일로 로그인 링크 받기</button>
+    </form>
+    <p style="font-size:10.5px;color:var(--text-hint);text-align:center;margin:0;">비밀번호 없이 메일의 링크를 누르면 바로 로그인돼요. 처음이면 자동 가입.</p>`;
+  if(AUTH_PROVIDERS.kakao) h+=`<button id="btn-login-kakao" onclick="signInWithKakao()" style="width:100%;border-radius:18px;padding:${big?13:12}px;background:#FEE500;color:#3C1E1E;border:none;box-shadow:0 2px 8px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;gap:8px;font-size:${big?15:14}px;font-weight:700;cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.717 1.566 5.112 3.938 6.54L5 21l4.267-2.247A11.2 11.2 0 0012 19.2c5.523 0 10-3.477 10-8.4S17.523 3 12 3z"/></svg>카카오로 로그인</button>`;
+  if(AUTH_PROVIDERS.google) h+=`<button id="btn-login-google" onclick="signInWithGoogle()" style="width:100%;border-radius:18px;padding:${big?12:11}px;background:white;color:#62534D;border:1.5px solid #ddd;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center;gap:8px;font-size:${big?15:14}px;font-weight:600;cursor:pointer;"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" style="width:18px;height:18px;">구글로 로그인</button>`;
+  return h+'</div>';
+}
+let _loginSending=false;
+async function sendLoginLink(inputId){
+  const inp=document.getElementById(inputId); const email=(inp?.value||'').trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast('이메일 주소를 확인해주세요');return;}
+  if(!supa||_loginSending)return; _loginSending=true;
+  savePendingMigration();
+  try{
+    const {error}=await supa.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin}});
+    if(error){
+      if(/rate|limit|429/i.test(error.message)) showToast('메일 발송 한도예요. 잠시 후 다시 시도해주세요',3200);
+      else showToast('전송 실패: '+error.message,3200);
+    } else {
+      showToast('📨 '+email+' 로 링크를 보냈어요. 메일함(스팸함 포함)을 확인하세요',4200);
+      if(inp) inp.value='';
+      const m=document.querySelector('.modal-overlay.open'); if(m) closeModal(m.id);
+    }
+  }catch(e){showToast('전송 실패: '+(e.message||e),3000);}
+  _loginSending=false;
 }
 
 // ── 소셜 로그인 전 localStorage 데이터 스냅샷 저장 ──────────
@@ -2548,7 +2596,7 @@ const TIPS={'아침 식후':'지용성 비타민은 아침 식사 후가 최적 
 const TICN={'아침 식후':'🌅','점심 식후':'☀️','저녁 식후':'🌙','취침 전':'😴','식사 무관':'⏰'};
 function renderSchedule(){
   const body=document.getElementById('schedule-body');
-  if(!S.supplements.length){body.innerHTML='<div style="text-align:center;padding:40px 20px;"><img src="/images/cony-question.png" class="cony-img" style="width:72px;height:72px;margin:0 auto 10px;"><p style="font-size:13px;color:var(--text-sub);">라벨 스캔으로 영양제를 추가해봐요!</p></div>';return;}
+  if(!S.supplements.length){body.innerHTML='<div style="text-align:center;padding:40px 20px;"><img src="/images/cony-question.png" class="cony-img" style="width:72px;height:72px;margin:0 auto 10px;"><p style="font-size:13px;color:var(--text-sub);margin-bottom:14px;">아직 등록된 영양제가 없어요.<br>먹이는 영양제를 등록하면 복용 체크와 합산 판정이 시작돼요.</p><button class="btn-p" onclick="showScreen(\'scan\')" style="margin-bottom:8px;">📸 라벨 스캔으로 추가</button><button class="btn-s" onclick="showModal(\'add-modal\')">✏️ 직접 입력으로 추가</button></div>';return;}
   const t=today();if(!S.dailyLog[t])S.dailyLog[t]={};
   let html='';const bt={};
   S.supplements.forEach(s=>{if(!bt[s.timing])bt[s.timing]=[];bt[s.timing].push(s);});
@@ -2737,6 +2785,10 @@ function renderProfile(){
   document.getElementById('profile-age').textContent=ageDisplay+(ref.baby?' 👶':'')+' · '+S.supplements.length+'가지 영양제';
   document.getElementById('ps-name').textContent=S.profile.name;
   document.getElementById('ps-age').textContent=ageDisplay;
+  const FEED={breast:'모유 수유',formula:'분유 수유',mixed:'혼합 수유',solid:'이유식·일반식 병행',regular:'일반식'};
+  const pf=document.getElementById('ps-feeding'); if(pf) pf.textContent=FEED[S.profile.feeding]||'미입력';
+  const pw=document.getElementById('ps-weight'); if(pw) pw.textContent=S.profile.weight?S.profile.weight+' kg':'미입력';
+  const da=document.getElementById('btn-delete-account'); if(da) da.style.display=supaUser?'':'none';
   document.getElementById('ps-emoji').textContent=S.profile.emoji;
   const ms=document.getElementById('member-status-display');
   if(supaUser){
@@ -2746,21 +2798,31 @@ function renderProfile(){
   }else{
     ms.innerHTML=`<div style="text-align:center;padding:8px 0;">
       <p style="font-size:12px;color:var(--text-sub);margin-bottom:10px;">비회원 · 하루 3회 무료 상담</p>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <button id="btn-login-kakao" onclick="signInWithKakao()" style="width:100%;border-radius:18px;padding:12px;background:#FEE500;color:#3C1E1E;border:none;box-shadow:0 2px 8px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;cursor:pointer;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.717 1.566 5.112 3.938 6.54L5 21l4.267-2.247A11.2 11.2 0 0012 19.2c5.523 0 10-3.477 10-8.4S17.523 3 12 3z"/></svg>
-          카카오로 로그인
-        </button>
-        <button disabled aria-label="네이버 로그인 준비 중" style="width:100%;border-radius:18px;padding:12px;background:#ccc;color:#888;border:none;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:0.6;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#888"><path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727z"/></svg>
-          네이버 로그인 (준비 중)
-        </button>
-        <button id="btn-login-google" onclick="signInWithGoogle()" style="width:100%;border-radius:18px;padding:11px;background:white;color:#62534D;border:1.5px solid #ddd;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;height:18px;">구글로 로그인
-        </button>
-      </div>
+      <div class="login-box" data-ctx="profile">${loginButtonsHtml('profile')}</div>
     </div>`;
   }
+}
+function saveFeeding(){
+  const f=document.getElementById('ef-feeding').value; const w=parseFloat(document.getElementById('ef-weight').value);
+  S.profile.feeding=f||''; S.profile.weight=(!isNaN(w)&&w>0&&w<=80)?Math.round(w*10)/10:null;
+  save(); closeModal('ef-modal'); renderProfile(); renderHome();
+  if(typeof syncToSupa==='function') syncToSupa();
+  showToast('저장했어요 🍼');
+}
+async function deleteAccount(){
+  if(!supa||!supaUser){showToast('로그인 상태가 아니에요');return;}
+  if(!confirm('회원 탈퇴하면 계정과 서버에 저장된 아이 정보·영양제·복용 기록·라벨 분석 기록이 모두 삭제돼요.\n(상담 내용은 누가 물었는지 알 수 없게 익명 처리돼 품질 검토용으로만 남아요)\n\n정말 탈퇴할까요?'))return;
+  if(!confirm('마지막 확인이에요. 삭제 후에는 되돌릴 수 없어요. 탈퇴를 진행할까요?'))return;
+  try{
+    const {data:{session}}=await supa.auth.getSession();
+    const r=await fetch('/api/account',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')},body:JSON.stringify({action:'delete'})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){showToast(j.error||'삭제에 실패했어요',3500);return;}
+    try{await supa.auth.signOut();}catch(e){}
+    localStorage.clear();
+    alert('탈퇴가 완료됐어요. 그동안 이용해 주셔서 감사합니다.');
+    location.reload();
+  }catch(e){showToast('삭제 요청 중 오류가 났어요',3000);}
 }
 function saveName(){
   const v=document.getElementById('en-inp').value.trim();
@@ -2906,6 +2968,8 @@ function showModal(id){
   },300);
   // 이름 모달: 현재 이름 채우기
   if(id==='en-modal') document.getElementById('en-inp').value=S.profile.name;
+  if(id==='signup-modal'){ const b=el.querySelector('.login-box'); if(b&&!b.innerHTML) b.innerHTML=loginButtonsHtml('signup'); }
+  if(id==='ef-modal'){ document.getElementById('ef-feeding').value=S.profile.feeding||''; document.getElementById('ef-weight').value=S.profile.weight||''; }
   // 생년월일 모달: 기존 생년월일 채우고 미리보기 갱신
   if(id==='ea-modal'){
     const inp=document.getElementById('ea-birthdate');
