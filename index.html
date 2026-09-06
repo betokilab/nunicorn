@@ -775,6 +775,7 @@ button.ni { background:none; border:none; font-family:inherit; }
       <div class="sr" onclick="showModal('ee-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">이모지</span><span id="ps-emoji">👶</span></div>
       <div class="sr" onclick="showModal('ef-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">🍼 수유·식사</span><span style="font-size:13px;color:var(--text-sub);" id="ps-feeding">-</span></div>
       <div class="sr" onclick="showModal('ef-modal')"><span style="font-size:14px;font-weight:600;color:var(--text);">⚖️ 몸무게</span><span style="font-size:13px;color:var(--text-sub);" id="ps-weight">-</span></div>
+      <div class="sr" id="ps-formula-row" onclick="showModal('fm-modal')" style="display:none;"><span style="font-size:14px;font-weight:600;color:var(--text);">🍼 분유 함량</span><span style="font-size:13px;color:var(--text-sub);" id="ps-formula">-</span></div>
     </div>
     <div class="card" id="member-info-card">
       <p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">💜 멤버십</p>
@@ -988,6 +989,35 @@ button.ni { background:none; border:none; font-family:inherit; }
   </div>
 </div>
 
+<div class="modal-overlay" id="fm-modal" onclick="cmbg(event,'fm-modal')" role="dialog" aria-modal="true" aria-label="분유 함량 등록">
+  <div class="modal-sheet" onclick="event.stopPropagation()" style="max-height:92%;overflow-y:auto;">
+    <div class="mhandle"></div>
+    <p style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px;">🍼 분유 함량 등록</p>
+    <p style="font-size:11px;color:var(--text-sub);line-height:1.5;margin-bottom:12px;">분유 캔 옆면 영양성분표의 <b>100mL당(조유 후)</b> 값을 입력하세요. 캔 라벨을 찍으면 자동으로 채워 드려요.</p>
+    <input type="file" id="fm-file" accept="image/*" capture="environment" style="display:none;" onchange="fmScan(event)">
+    <button class="btn-s" onclick="document.getElementById('fm-file').click()" style="margin-bottom:12px;">📸 분유 캔 라벨 촬영해서 자동 입력</button>
+    <div id="fm-ocr-status" style="display:none;align-items:center;gap:8px;background:var(--primary);border-radius:12px;padding:8px 14px;margin-bottom:10px;"><div class="typing-dots"><span></span><span></span><span></span></div><span style="font-size:12px;font-weight:700;color:white;">라벨 인식 중...</span></div>
+    <div class="field"><label class="flabel" for="fm-name">분유 이름 (선택)</label><input type="text" id="fm-name" placeholder="예: OO 분유 2단계" maxlength="40"></div>
+    <div class="field"><label class="flabel" for="fm-ml">하루 총 섭취량 (mL) <span style="color:var(--primary-dark);">*필수</span></label><input type="number" id="fm-ml" inputmode="numeric" min="0" max="2000" step="10" placeholder="예: 800 (회당 160mL × 5회)"></div>
+    <p style="font-size:11px;font-weight:700;color:var(--text-sub);margin:4px 0 8px;">100mL당 함량</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+      <div><label class="flabel" for="fm-vitD">☀️ 비타민D</label><div style="display:flex;gap:4px;"><input type="number" id="fm-vitD" inputmode="decimal" step="0.01" min="0" placeholder="0"><select id="fm-vitD-unit" style="width:72px;padding:11px 6px;font-size:12px;"><option value="mcg">㎍</option><option value="IU">IU</option></select></div></div>
+      <div><label class="flabel" for="fm-iron">💪 철분 (mg)</label><input type="number" id="fm-iron" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <div><label class="flabel" for="fm-calcium">🦴 칼슘 (mg)</label><input type="number" id="fm-calcium" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+      <div><label class="flabel" for="fm-zinc">🛡️ 아연 (mg)</label><input type="number" id="fm-zinc" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+      <div><label class="flabel" for="fm-vitA">🥕 비타민A (㎍ RAE)</label><input type="number" id="fm-vitA" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+      <div><label class="flabel" for="fm-vitC">🍊 비타민C (mg)</label><input type="number" id="fm-vitC" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+      <div><label class="flabel" for="fm-mg">🌿 마그네슘 (mg)</label><input type="number" id="fm-mg" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+      <div><label class="flabel" for="fm-iodine">🧂 요오드 (㎍)</label><input type="number" id="fm-iodine" inputmode="decimal" step="0.1" min="0" placeholder="0"></div>
+    </div>
+    <p id="fm-preview" style="font-size:11px;color:var(--text-sub);line-height:1.6;margin:10px 0 0;"></p>
+    <p style="font-size:10px;color:var(--text-hint);line-height:1.6;margin:8px 0 12px;">※ 라벨 표기 기준 참고값이에요. 실제 섭취량은 남기는 양, 농도 조절에 따라 달라질 수 있어요. 수유 방식이 분유·혼합일 때만 합산에 포함돼요.</p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-s" style="flex:1;" onclick="clearFormula()">삭제</button>
+      <button class="btn-p" style="flex:2;" onclick="saveFormula()">저장</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="ef-modal" onclick="cmbg(event,'ef-modal')" role="dialog" aria-modal="true" aria-label="수유 방식·몸무게 변경">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="mhandle"></div>
@@ -1151,8 +1181,8 @@ const NUT_CORE=['vitD','vitC','zinc','iron','calcium','omega3','vitA','mg'];
 // 출처: KDRIs 2020
 const UL={
   vitD:1000,  // 영아 1000IU (25μg) · 유아 이상은 getAgeUL 사용
-  vitC:400,   // 1~2세 400mg (보수적 기준)
-  zinc:7,     // 1~2세 7mg
+  vitC:340,   // 1~2세 340mg
+  zinc:6,     // 1~2세 6mg
   iron:40,    // mg (전 연령 공통)
   calcium:2500,// mg (공통)
   omega3:null, // 소아 공식 상한 기준 없음
@@ -1180,18 +1210,18 @@ function getAgeUL(key,months){
     if(row && key in row) return row[key];
   }
   const t={
-    vitD: months<=11?1000:months<=35?2000:3000,  // IU (영아 25μg / 유아 50μg / 3세↑ 75μg)
-    vitA: months<=35?600:months<=71?700:900,      // μg RAE
-    vitC: months<=23?400:months<=71?500:700,      // mg
-    zinc: months<=23?7:months<=71?9:13,            // mg
+    vitD: months<=11?1000:months<=35?1200:months<=71?1400:1600, // IU (KDRIs 25/30/35/40μg)
+    vitA: months<=35?600:months<=71?750:1100,     // μg RAE
+    vitC: months<=11?400:months<=35?340:months<=71?510:750, // mg
+    zinc: months<=11?7:months<=35?6:months<=71?9:13,  // mg
     iron: 40,                                      // mg (전 연령 공통)
     calcium: 2500,                                 // mg (공통)
-    mg:    months<=23?65:months<=71?110:200,       // mg (보충제 기준)
+    mg:    months<=11?65:months<=35?60:months<=71?90:130, // mg (보충제 기준)
     omega3: null,                                  // 소아 공식 상한 없음
     // ── 확장 (KDRIs 상한섭취량, 전문가 검수 필요) ──
     vitE:  months<=11?null:months<=35?100:months<=71?150:200, // mg α-TE
     vitK:  null, vitB1: null, vitB2: null, vitB12: null,
-    vitB6: months<=11?null:months<=35?25:months<=71?35:45,    // mg
+    vitB6: months<=11?null:months<=35?20:months<=71?30:45,    // mg
     folate:months<=11?null:months<=35?300:months<=71?400:500, // μg (보충제 엽산)
     iodine:months<=11?250:months<=71?300:500,                 // μg
     selenium:months<=5?40:months<=11?65:months<=35?70:months<=71?100:150, // μg
@@ -1567,6 +1597,7 @@ async function syncToSupa() {
         months:    S.profile.months    ??null,
         feeding:   S.profile.feeding   ||null,
         weight_kg: S.profile.weight    ??null,
+        formula:   S.profile.formula   ||null,
         ageSet:    S.profile.ageSet    ||false,
         emoji:     S.profile.emoji     || '👶'
       }, { onConflict: 'user_id' });
@@ -1614,6 +1645,7 @@ async function loadFromSupa() {
       S.profile.gender    = child.gender    || S.profile.gender;
       S.profile.feeding   = child.feeding   || S.profile.feeding || '';
       S.profile.weight    = child.weight_kg ?? S.profile.weight ?? null;
+      if(child.formula && typeof child.formula==='object') S.profile.formula = child.formula;
       S.profile.months    = child.months    ??S.profile.months;
       S.profile.ageSet    = child.ageSet    ||S.profile.ageSet;
       S.profile.emoji     = child.emoji     || S.profile.emoji;
@@ -1808,17 +1840,20 @@ function renderHome(){
     const box=document.getElementById('home-totals'); if(!box) return;
     const t=dailyTotals(); const em=getEffectiveMonths(); const miss=suppsWithoutNutrients().length;
     const ks=Object.keys(t).filter(k=>NUT[k]&&!NUT[k].info);
-    if(!ks.length){ box.innerHTML = S.supplements.length && miss ? `<div class="card" style="padding:10px 14px;"><p style="font-size:11px;color:var(--text-sub);line-height:1.6;">🧮 등록된 영양제 ${miss}개에 성분 정보가 없어 <b>합산 점검</b>이 꺼져 있어요. 라벨 스캔 후 "일정에 추가"하면 켜져요.</p></div>` : ''; return; }
+    const fmPrompt = (['formula','mixed'].includes(S.profile.feeding) && !formulaActive() && em<=23)
+      ? `<div class="card" style="padding:10px 14px;background:linear-gradient(135deg,#FBF7E8,#FEF2F1);cursor:pointer;" onclick="showModal('fm-modal')"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">🍼</span><div style="flex:1;"><p style="font-size:12px;font-weight:800;color:var(--text);">분유 함량을 등록하면 합산이 정확해져요</p><p style="font-size:10.5px;color:var(--text-sub);line-height:1.5;margin-top:2px;">분유에는 비타민D·철분·칼슘이 이미 들어 있어요. 캔 라벨의 100mL당 함량과 하루 섭취량을 입력하면 영양제와 합산해 드려요.</p></div><span style="color:var(--text-hint);">›</span></div></div>` : '';
+    const fmNote = formulaActive() ? `<p style="font-size:10px;color:var(--text-hint);margin-top:6px;">🍼 분유 ${S.profile.formula.ml}mL/일 함량 포함 · <span style="color:var(--primary-dark);cursor:pointer;" onclick="showModal('fm-modal')">수정</span></p>` : '';
+    if(!ks.length){ box.innerHTML = fmPrompt + (S.supplements.length && miss ? `<div class="card" style="padding:10px 14px;"><p style="font-size:11px;color:var(--text-sub);line-height:1.6;">🧮 등록된 영양제 ${miss}개에 성분 정보가 없어 <b>합산 점검</b>이 꺼져 있어요. 라벨 스캔 후 "일정에 추가"하면 켜져요.</p></div>` : ''); return; }
     const rows=ks.map(k=>{const ul=getAgeUL(k,em);const r=ul?t[k]/ul:null;return {k,v:t[k],ul,r};}).sort((a,b)=>(b.r??-1)-(a.r??-1));
     const over=rows.filter(r=>r.ul&&r.v>r.ul).length, near=rows.filter(r=>r.ul&&r.r>=0.8&&r.v<=r.ul).length;
     const color=over?'#F3A59B':near?'#F3D68A':'#C8E1D4';
     const headline=over?`⚠️ ${over}개 성분이 상한을 넘고 있어요 — 소아과 확인을 권해요`:near?`🟡 ${near}개 성분이 상한에 가까워요`:`✅ 모든 성분이 상한 이내예요`;
     box.innerHTML=`<div class="card" style="padding:10px 14px;border-left:4px solid ${color};">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><p style="font-size:12px;font-weight:800;color:var(--text);">🧮 영양제 합산 1일 보충량</p><span style="font-size:10px;color:var(--text-hint);">${ref.label} 상한 기준</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><p style="font-size:12px;font-weight:800;color:var(--text);">🧮 ${formulaActive()?'영양제+분유':'영양제'} 합산 1일 보충량</p><span style="font-size:10px;color:var(--text-hint);">${ref.label} 상한 기준</span></div>
       <p style="font-size:11px;font-weight:700;margin-bottom:6px;color:${over?'#C0392B':near?'#B8860B':'#2E9E84'};">${headline}</p>
       ${rows.slice(0,6).map(r=>`<div style="display:flex;align-items:center;gap:8px;margin:4px 0;"><span style="width:16px;font-size:13px;">${NUT[r.k].e}</span><span style="flex:1;font-size:11px;font-weight:600;">${NUT[r.k].l}</span><span style="font-size:11px;color:var(--text-sub);">${fmtAmt(r.k,r.v)}${r.ul?' / '+fmtAmt(r.k,r.ul):''}</span><div style="width:64px;height:6px;background:#EEE;border-radius:3px;overflow:hidden;"><div style="width:${r.ul?Math.min(100,Math.round(r.r*100)):0}%;height:100%;background:${r.ul&&r.v>r.ul?'#C0392B':r.ul&&r.r>=0.8?'#E0B000':'#2E9E84'};"></div></div></div>`).join('')}
-      ${miss?`<p style="font-size:10px;color:var(--text-hint);margin-top:6px;">※ 성분 미등록 영양제 ${miss}개는 제외</p>`:''}
-    </div>`;
+      ${miss?`<p style="font-size:10px;color:var(--text-hint);margin-top:6px;">※ 성분 미등록 영양제 ${miss}개는 제외</p>`:''}${fmNote}
+    </div>`+fmPrompt;
   })();
   document.getElementById('home-ref-table').innerHTML=keys.map(k=>{
     const n=NUT[k];const crit=ref.baby&&['vitD','iron','omega3'].includes(k);
@@ -2152,12 +2187,13 @@ function renderResult(name,inputs,ref){
       rows:rows.map(r=>({e:NUT[r.k].e,l:NUT[r.k].l,prev:r.prev?fmtAmt(r.k,r.prev):'-',add:r.add?fmtAmt(r.k,r.add):'-',sum:fmtAmt(r.k,r.sum),ul:r.ul?fmtAmt(r.k,r.ul):null,over:!!(r.ul&&r.sum>r.ul),near:!!(r.ul&&r.ratio>=0.8&&r.sum<=r.ul),color:r.color}))};
     const doctorBtn = overs>0 ? `<button class="btn-s" style="margin-top:10px;background:#FEF2F1;color:#C0392B;" onclick="copyResultDoctorSummary()">🏥 소아과 상담용 요약 복사</button>` : '';
     ch=`<div class="card" style="border-left:4px solid ${overs?'#F3A59B':nears?'#F3D68A':'#C8E1D4'};">
-      <p style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px;">🧮 현재 복용 영양제 + 이 제품 = 1일 합산</p>${head}
+      <p style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px;">🧮 현재 복용 영양제${formulaActive()?'·분유':''} + 이 제품 = 1일 합산</p>${head}
       <div class="sum-list">${rows.map(r=>`<div class="sum-row">
         <div class="sum-head"><span class="sum-name">${NUT[r.k].e} ${NUT[r.k].l}</span>${r.tag}</div>
         <div class="sum-nums"><span>기존 <b>${r.prev?fmtAmt(r.k,r.prev):'-'}</b></span><span>+ 이 제품 <b>${r.add?fmtAmt(r.k,r.add):'-'}</b></span><span class="sum-total" style="color:${r.color};">= ${fmtAmt(r.k,r.sum)}${r.ul?' <small>/ 상한 '+fmtAmt(r.k,r.ul)+'</small>':''}</span></div>
       </div>`).join('')}</div>
       ${missing.length?`<p style="font-size:10px;color:var(--text-hint);margin-top:8px;">※ 성분 미등록 영양제 ${missing.length}개(${missing.map(m=>m.name).slice(0,3).join(', ')})는 합산에서 빠졌어요. 라벨을 스캔해 "일정에 추가"하면 반영돼요.</p>`:''}
+      ${formulaActive()?`<p style="font-size:10px;color:var(--text-hint);margin-top:6px;">🍼 "기존"에는 분유 ${S.profile.formula.ml}mL/일 함량이 포함돼 있어요.</p>`:''}
       ${doctorBtn}
     </div>`;
   } else if(S.supplements.some(s=>(!s.status||s.status==='active'))){
@@ -2660,7 +2696,7 @@ function renderInsights(){
 
   // 합산 표
   if(rows.length){
-    html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">🧮 영양제 합산 1일 보충량 <span style="font-weight:400;color:var(--text-hint);">(${ref.label} 기준 · 음식 제외)</span></p><div class="card" style="padding:13px;">`;
+    html+=`<p style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">🧮 영양제${formulaActive()?'+분유':''} 합산 1일 보충량 <span style="font-weight:400;color:var(--text-hint);">(${ref.label} 기준 · ${formulaActive()?'분유 '+S.profile.formula.ml+'mL 포함, 그 외 음식 제외':'음식 제외'})</span></p><div class="card" style="padding:13px;">`;
     rows.forEach(r=>{
       const n=NUT[r.k];
       const ulPct=r.ul?Math.min(100,Math.round(r.ulR*100)):null;
@@ -2733,7 +2769,7 @@ function buildDoctorSummary(rows,active,adherence){
   });
   if(rows.length){
     lines.push('');
-    lines.push('■ 1일 합산 보충량 (라벨 기준, 음식 제외)');
+    lines.push('■ 1일 합산 보충량 (라벨 기준, '+(formulaActive()?'분유 '+S.profile.formula.ml+'mL 포함, 그 외 음식 제외':'음식 제외')+')');
     rows.forEach(r=>{
       const flag=r.ul&&r.v>r.ul?' ⚠ 상한 초과':r.ul&&r.ulR>=0.8?' △ 상한 근접':'';
       lines.push(`  - ${NUT[r.k].l}: ${fmtAmt(r.k,r.v)}${r.rni?' (권장 '+fmtAmt(r.k,r.rni)+')':''}${r.ul?' (상한 '+fmtAmt(r.k,r.ul)+')':''}${flag}`);
@@ -2789,6 +2825,7 @@ function renderProfile(){
   const FEED={breast:'모유 수유',formula:'분유 수유',mixed:'혼합 수유',solid:'이유식·일반식 병행',regular:'일반식'};
   const pf=document.getElementById('ps-feeding'); if(pf) pf.textContent=FEED[S.profile.feeding]||'미입력';
   const pw=document.getElementById('ps-weight'); if(pw) pw.textContent=S.profile.weight?S.profile.weight+' kg':'미입력';
+  const pfr=document.getElementById('ps-formula-row'); if(pfr){ const show=['formula','mixed'].includes(S.profile.feeding); pfr.style.display=show?'':'none'; const f=S.profile.formula; document.getElementById('ps-formula').textContent=(f&&f.ml>0)?((f.name?f.name+' · ':'')+f.ml+'mL/일'):'미등록'; }
   const da=document.getElementById('btn-delete-account'); if(da) da.style.display=supaUser?'':'none';
   document.getElementById('ps-emoji').textContent=S.profile.emoji;
   const ms=document.getElementById('member-status-display');
@@ -2802,6 +2839,73 @@ function renderProfile(){
       <div class="login-box" data-ctx="profile">${loginButtonsHtml('profile')}</div>
     </div>`;
   }
+}
+// ── 분유 함량 ──
+const FM_KEYS=['vitD','iron','calcium','zinc','vitA','vitC','mg','iodine'];
+function fillFormulaModal(){
+  const f=S.profile.formula||{per100:{}};
+  document.getElementById('fm-name').value=f.name||'';
+  document.getElementById('fm-ml').value=f.ml||'';
+  FM_KEYS.forEach(k=>{ const el=document.getElementById('fm-'+k); if(el){ el.value=(f.per100&&f.per100[k])||''; el.style.background=''; } });
+  document.getElementById('fm-vitD-unit').value='IU';
+  if(f.per100&&f.per100.vitD){ document.getElementById('fm-vitD-unit').value='IU'; }
+  updateFormulaPreview();
+  FM_KEYS.forEach(k=>{ const el=document.getElementById('fm-'+k); if(el) el.oninput=updateFormulaPreview; });
+  document.getElementById('fm-ml').oninput=updateFormulaPreview; document.getElementById('fm-vitD-unit').onchange=updateFormulaPreview;
+}
+function readFormulaForm(){
+  const ml=parseFloat(document.getElementById('fm-ml').value); const per100={};
+  FM_KEYS.forEach(k=>{ let v=parseFloat(document.getElementById('fm-'+k).value); if(!isNaN(v)&&v>0){ if(k==='vitD'&&document.getElementById('fm-vitD-unit').value==='mcg') v=v*40; per100[k]=Math.round(v*100)/100; } });
+  return {name:document.getElementById('fm-name').value.trim().slice(0,40), ml:(!isNaN(ml)&&ml>0)?Math.min(2000,Math.round(ml)):0, per100};
+}
+function updateFormulaPreview(){
+  const f=readFormulaForm(); const el=document.getElementById('fm-preview'); if(!el) return;
+  const em=getEffectiveMonths();
+  if(!f.ml||!Object.keys(f.per100).length){ el.textContent=''; return; }
+  el.innerHTML='하루 '+f.ml+'mL 기준: '+Object.entries(f.per100).map(([k,v])=>{const tot=Math.round(v*f.ml/100*100)/100; const ul=getAgeUL(k,em); return NUT[k].l+' <b>'+fmtAmt(k,tot)+'</b>'+(ul?' (상한의 '+Math.round(tot/ul*100)+'%)':'');}).join(' · ');
+}
+function saveFormula(){
+  const f=readFormulaForm();
+  if(!f.ml){showToast('하루 섭취량(mL)을 입력해주세요');return;}
+  if(!Object.keys(f.per100).length){showToast('함량을 하나 이상 입력해주세요');return;}
+  S.profile.formula=f;
+  if(!['formula','mixed'].includes(S.profile.feeding)){ S.profile.feeding='formula'; }
+  save(); closeModal('fm-modal'); renderHome(); renderProfile(); if(typeof renderInsights==='function'&&document.getElementById('screen-insights').classList.contains('active')) renderInsights();
+  if(typeof syncToSupa==='function') syncToSupa();
+  logA('formula_saved',{ml:f.ml,keys:Object.keys(f.per100)});
+  showToast('🍼 분유 함량을 합산에 반영했어요');
+}
+function clearFormula(){
+  if(!S.profile.formula){closeModal('fm-modal');return;}
+  if(!confirm('등록한 분유 함량을 삭제할까요?'))return;
+  S.profile.formula=null; save(); closeModal('fm-modal'); renderHome(); renderProfile(); if(typeof syncToSupa==='function') syncToSupa(); showToast('삭제했어요');
+}
+function fmScan(e){
+  const file=e.target.files[0]; if(!file) return; e.target.value='';
+  const st=document.getElementById('fm-ocr-status'); st.style.display='flex';
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=async()=>{
+      const c=document.createElement('canvas'); const ratio=Math.min(1200/img.width,1200/img.height,1);
+      c.width=img.width*ratio; c.height=img.height*ratio; c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      const b64=c.toDataURL('image/jpeg',0.85).split(',')[1];
+      try{
+        const res=await fetch('/api/ocr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:b64,mediaType:'image/jpeg',userId:S.member?.id||null,mode:'formula'})});
+        const json=await res.json().catch(()=>({}));
+        st.style.display='none';
+        if(json.error){showToast('📋 '+json.error);return;}
+        let n=0;
+        Object.entries(json.nutrients||{}).forEach(([k,v])=>{ const el=document.getElementById('fm-'+k); if(el&&v&&v.amount>0){ el.value=v.amount; el.style.background='#EBF6F2'; n++; } });
+        if(json.nutrients&&json.nutrients.vitD) document.getElementById('fm-vitD-unit').value='IU';
+        if(json.productName&&!document.getElementById('fm-name').value) document.getElementById('fm-name').value=json.productName;
+        updateFormulaPreview();
+        showToast(n?'✅ '+n+'가지 인식됨 — 100mL당 값이 맞는지 확인해주세요'+(json.servingSize?' (표기 기준: '+json.servingSize+')':''):'📋 성분표를 찾지 못했어요. 직접 입력해주세요',4000);
+      }catch(err){ st.style.display='none'; showToast('네트워크 오류, 직접 입력해주세요'); }
+    };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(file);
 }
 function saveFeeding(){
   const f=document.getElementById('ef-feeding').value; const w=parseFloat(document.getElementById('ef-weight').value);
@@ -2930,12 +3034,21 @@ function addSuppDirect(name,emoji,timing,memo,extra={}){
 
 // ── 합산 판정 헬퍼 ──────────────────────────────────────────
 // 현재 활성 영양제의 1일 보충량 합계 {key: amount}. excludeName: 같은 이름 제품 제외
-function dailyTotals(excludeName){
+// 분유 1일 섭취량 기준 영양소 (수유 방식이 분유/혼합이고 함량이 등록된 경우만)
+function formulaActive(){ const f=S.profile.formula; return !!(f && f.ml>0 && f.per100 && Object.values(f.per100).some(v=>v>0) && ['formula','mixed'].includes(S.profile.feeding)); }
+function formulaTotals(){
+  const t={}; if(!formulaActive()) return t;
+  const f=S.profile.formula;
+  Object.entries(f.per100).forEach(([k,v])=>{ if(NUT[k]&&v>0) t[k]=Math.round(v*f.ml/100*100)/100; });
+  return t;
+}
+function dailyTotals(excludeName,opts={}){
   const t={};
   S.supplements.filter(s=>(!s.status||s.status==='active') && s.nutrients && s.name!==excludeName).forEach(s=>{
     const mult=(s.dailyServings||1)*(s.frequency==='alternate'?0.5:1);
     Object.entries(s.nutrients).forEach(([k,v])=>{ if(NUT[k]&&v>0) t[k]=(t[k]||0)+v*mult; });
   });
+  if(opts.includeFormula!==false){ Object.entries(formulaTotals()).forEach(([k,v])=>{ t[k]=(t[k]||0)+v; }); }
   return t;
 }
 function suppsWithoutNutrients(){ return S.supplements.filter(s=>(!s.status||s.status==='active') && !s.nutrients); }
@@ -2951,9 +3064,10 @@ function refSummary(ref){
 }
 function regimenSummary(){
   const t=dailyTotals(); const em=getEffectiveMonths();
+  const fm=formulaActive()?' (분유 '+S.profile.formula.ml+'ml 함량 포함)':'';
   const parts=Object.entries(t).sort((a,b)=>{const ua=getAgeUL(a[0],em),ub=getAgeUL(b[0],em);return (ub?b[1]/ub:0)-(ua?a[1]/ua:0);}).slice(0,8)
     .map(([k,v])=>{const ul=getAgeUL(k,em);return NUT[k].l+' '+fmtAmt(k,v)+(ul?'(상한 '+fmtAmt(k,ul)+')':'');});
-  return parts.length?parts.join(', '):'';
+  return parts.length?parts.join(', ')+fm:'';
 }
 function delSupp(id){
   if(!confirm('삭제할까요?'))return;
@@ -2979,6 +3093,7 @@ function showModal(id){
   if(id==='en-modal') document.getElementById('en-inp').value=S.profile.name;
   if(id==='signup-modal'){ const b=el.querySelector('.login-box'); if(b&&!b.innerHTML) b.innerHTML=loginButtonsHtml('signup'); }
   if(id==='ef-modal'){ document.getElementById('ef-feeding').value=S.profile.feeding||''; document.getElementById('ef-weight').value=S.profile.weight||''; }
+  if(id==='fm-modal') fillFormulaModal();
   // 생년월일 모달: 기존 생년월일 채우고 미리보기 갱신
   if(id==='ea-modal'){
     const inp=document.getElementById('ea-birthdate');

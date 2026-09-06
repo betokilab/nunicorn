@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "fix(chat): pass app reference values to AI so numbers match screen; effective months; sitemap lastmod"
+git commit -m "feat(formula): infant formula nutrient totals - per-100mL entry with label OCR, included in daily totals/result/report/chat; KDRIs UL fallback sync"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

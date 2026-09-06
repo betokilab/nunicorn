@@ -35,6 +35,14 @@ export const NUTRIENT_KEYS = {
 
 const KEY_LIST = Object.keys(NUTRIENT_KEYS);
 
+const FORMULA_ADDON = `
+
+[추가 지시 — 이 사진은 조제분유(분유) 캔의 영양성분표입니다]
+- 반드시 "100mL당"(조유액/표준 조유 기준) 열의 값을 추출하세요. 100mL당 열이 없고 100g당(분말)만 있으면 그 값을 넣고 servingSize에 "100g(분말)"이라고 적으세요.
+- 1회 분량(예: 1스푼, 1회 조유량)당 값은 사용하지 마세요.
+- 비타민D는 μg이면 IU로 변환(×40)해 unit을 "IU"로, 비타민A는 μg RE/RAE 그대로.
+- productName에는 분유 제품명(단계 포함)을 적으세요.`;
+
 const EXTRACT_PROMPT = `당신은 어린이 영양제 라벨(영양성분표) 판독기입니다. 사진에서 아래 정보를 JSON으로만 출력하세요. 설명 문장 금지.
 
 출력 형식:
@@ -105,7 +113,8 @@ export default async function handler(req) {
 
   let body;
   try { body = await req.json(); } catch { return json({ error: '잘못된 요청 형식이에요.' }, 400); }
-  const { image, userId, mediaType } = body || {};
+  const { image, userId, mediaType, mode } = body || {};
+  const isFormula = mode === 'formula';
   if (!image || typeof image !== 'string' || image.length < 100) return json({ error: '이미지가 비어 있어요.' }, 400);
   if (image.length > 6_000_000) return json({ error: '이미지가 너무 커요. 다시 촬영해 주세요.' }, 413);
 
@@ -138,7 +147,7 @@ export default async function handler(req) {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mediaType === 'image/png' ? 'image/png' : 'image/jpeg', data: image } },
-            { type: 'text', text: EXTRACT_PROMPT },
+            { type: 'text', text: isFormula ? EXTRACT_PROMPT + FORMULA_ADDON : EXTRACT_PROMPT },
           ],
         }],
       }),
@@ -172,7 +181,7 @@ export default async function handler(req) {
 
     // 제품 후보 자동 등록 (관리자 승인 전까지 비공개 draft) — 같은 브랜드+제품명 있으면 생략
     let candidateId = null;
-    if (found >= 2 && parsed.productName && supaReady()) {
+    if (!isFormula && found >= 2 && parsed.productName && supaReady()) {
       try {
         const pname = String(parsed.productName).slice(0, 120).trim();
         const brand = String(parsed.brand || '미확인').slice(0, 80).trim();
