@@ -176,7 +176,7 @@ export default async function handler(req) {
     });
   }
 
-  const { message, childAge, childMonths, supplements, userId, disclaimerShown, feeding, weightKg, regimen } = body;
+  const { message, childAge, childMonths, supplements, userId, disclaimerShown, feeding, weightKg, regimen, refs } = body;
 
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return new Response(JSON.stringify({ error: '질문 내용이 비어 있어요.' }), {
@@ -224,7 +224,10 @@ export default async function handler(req) {
   const feedingTxt = FEEDING_LABEL[feeding] ? `, 수유·식사: ${FEEDING_LABEL[feeding]}` : '';
   const weightTxt = (typeof weightKg === 'number' && weightKg > 0 && weightKg < 100) ? `, 체중: ${weightKg}kg` : '';
   const regimenTxt = (typeof regimen === 'string' && regimen.trim()) ? `\n현재 영양제 합산 1일 보충량(라벨 기준, 음식 제외): ${regimen.slice(0, 400)}` : '';
-  const userContext = `아이 나이: ${childAge || '미설정'}${feedingTxt}${weightTxt}, 현재 복용 중인 영양제: ${supList}${regimenTxt}`;
+  const refsTxt = (typeof refs === 'string' && refs.trim())
+    ? `\n뉴니콘 앱이 이 아이에게 적용 중인 기준(2025 KDRIs, 1일): ${refs.slice(0, 600)}\n※ 권장량·상한량 수치를 말할 때는 반드시 위 앱 기준 수치를 그대로 사용하세요. 다른 기관 기준(예: 미국 AAP 400IU)을 언급할 땐 출처를 밝히고 앱 기준과 구분해 설명하세요.`
+    : '';
+  const userContext = `아이 나이: ${childAge || '미설정'}${feedingTxt}${weightTxt}, 현재 복용 중인 영양제: ${supList}${regimenTxt}${refsTxt}`;
   const userAgent = req.headers.get('User-Agent') || '';
 
   // 위험 키워드 사전 분류

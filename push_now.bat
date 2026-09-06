@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(audit): email magic-link login, account deletion API, feeding/weight edit, cony images 11MB to 640KB, HSTS+CSP, schedule empty CTA"
+git commit -m "fix(chat): pass app reference values to AI so numbers match screen; effective months; sitemap lastmod"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

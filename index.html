@@ -2425,10 +2425,11 @@ async function sendChat(){
       body: JSON.stringify({
         message: q,
         childAge: ref.label,
-        childMonths: S.profile.months||null,
+        childMonths: getEffectiveMonths()||null,
         feeding: S.profile.feeding||null,
         weightKg: S.profile.weight||null,
         regimen: regimenSummary()||null,
+        refs: refSummary(ref)||null,
         // 개인정보 최소화: 이름 대신 연령 라벨만 전송, userId는 익명 식별용
         userId: S.member?.id||null,
         disclaimerShown: true,
@@ -2940,6 +2941,14 @@ function dailyTotals(excludeName){
 function suppsWithoutNutrients(){ return S.supplements.filter(s=>(!s.status||s.status==='active') && !s.nutrients); }
 function fmtAmt(k,v){ if(k==='probiotic') return (v/1e8).toFixed(v%1e8?1:0)+'억 CFU'; return (Math.round(v*100)/100)+NUT[k].u; }
 // 합산 요약 문자열 (AI 상담 컨텍스트용, 최대 8개)
+// 앱이 적용 중인 기준값 요약 (AI 답변 수치를 앱 화면과 일치시키기 위함)
+function refSummary(ref){
+  try{
+    const em=getEffectiveMonths();
+    const keys=(typeof NUT_CORE!=='undefined'?NUT_CORE:Object.keys(NUT)).filter(k=>NUT[k]&&!NUT[k].info&&ref[k]);
+    return keys.map(k=>{const ul=getAgeUL(k,em);return NUT[k].l+' 권장 '+ref[k]+NUT[k].u+(ul?' 상한 '+ul+NUT[k].u:' 상한없음');}).join('; ');
+  }catch(e){return '';}
+}
 function regimenSummary(){
   const t=dailyTotals(); const em=getEffectiveMonths();
   const parts=Object.entries(t).sort((a,b)=>{const ua=getAgeUL(a[0],em),ub=getAgeUL(b[0],em);return (ub?b[1]/ub:0)-(ua?a[1]/ua:0);}).slice(0,8)
