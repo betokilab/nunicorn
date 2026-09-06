@@ -25,7 +25,7 @@ echo Staging all changes...
 git add -A -- . ":!.github"
 
 echo Committing...
-git commit -m "feat(formula): infant formula nutrient totals - per-100mL entry with label OCR, included in daily totals/result/report/chat; KDRIs UL fallback sync"
+git commit -m "fix(result): hide no-caution card when combined total exceeds UL"
 if %ERRORLEVEL% NEQ 0 (
     echo Nothing to commit or commit failed.
 )

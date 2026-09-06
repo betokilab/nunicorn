@@ -2199,6 +2199,7 @@ function renderResult(name,inputs,ref){
   } else if(S.supplements.some(s=>(!s.status||s.status==='active'))){
     ch=`<div class="card" style="border-left:4px solid #E8E8E8;"><p style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">🧮 합산 판정을 하려면</p><p style="font-size:11px;color:var(--text-sub);line-height:1.6;">지금 등록된 영양제 ${missing.length}개에 성분 정보가 없어요. 각 제품 라벨을 스캔한 뒤 <b>일정에 추가</b>를 누르면 성분이 저장되고, 다음 스캔부터 겹치는 성분을 자동으로 합산해 드려요.</p></div>`;
   }
+  if(ch.includes('합산 초과') && ih.includes('특별한 주의사항 없어요')) ih=''; // 합산 초과 경고와 모순되는 안심 문구 제거
   document.getElementById('result-interactions').innerHTML=ch+ih;
   const tips=[];
   if(ref.baby)tips.push('👶 0~24개월은 비타민D·철분·오메가3가 뇌 발달에 특히 중요해요!');
